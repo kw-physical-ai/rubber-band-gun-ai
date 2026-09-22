@@ -1,0 +1,6 @@
+-r base.txt
+pynput>=1.7,<2
+
+# Install picamera2 and pigpio from Raspberry Pi OS packages after inspecting
+# the target OS. Create the venv with --system-site-packages.
+# Install a compatible torch/torchvision build only after checking Pi architecture.

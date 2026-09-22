@@ -1,0 +1,31 @@
+# Local course materials and scratch files
+/physical-ai/
+/tmp/
+
+# Local secrets and configuration
+.env
+.env.*
+!.env.example
+/configs/*.toml
+!/configs/*.example.toml
+
+# Python environments, caches, and build output
+.venv/
+__pycache__/
+*.py[cod]
+.pytest_cache/
+.mypy_cache/
+.ruff_cache/
+.ipynb_checkpoints/
+build/
+dist/
+*.egg-info/
+
+# Local datasets and training runs
+/data/
+/runs/
+
+# OS and editor metadata
+.DS_Store
+.idea/
+.vscode/

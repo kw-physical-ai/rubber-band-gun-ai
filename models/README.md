@@ -1,0 +1,13 @@
+# Promoted models
+
+이 디렉터리에는 검증 후 팀이 승인한 모델만 Git LFS로 저장합니다.
+
+강의 자료의 `yolo_target.pt`와 `best_yaw_cnn.pth`는 baseline 평가가 끝날 때까지 `physical-ai/`에 유지하고 커밋하지 않습니다. 승격할 때는 모델 파일과 함께 다음 정보를 가진 JSON manifest를 추가합니다.
+
+- model SHA-256
+- source commit
+- training run/data manifest ID
+- input/preprocessing schema
+- yaw range 또는 class names
+- validation 및 locked-test metrics
+- compatible Ultralytics/PyTorch versions
