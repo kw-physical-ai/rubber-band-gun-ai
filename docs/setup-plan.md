@@ -111,7 +111,7 @@ Do not commit raw camera images, generated datasets, notebook outputs, credentia
 
 - Do not reuse the course notebook's example Roboflow value.
 - Name owners for the GitHub repository, Pi administration, model acceptance, and release approval.
-- Create project-owned Roboflow/Drive resources only if the baseline decision requires retraining. At that point, name their owners and store `ROBOFLOW_API_KEY` and any required fine-grained read-only GitHub token in Colab Secrets.
+- Use the existing shared Drive folder for smoke data and diagnostic captures. Create a project-owned Roboflow resource only if the baseline decision requires detection retraining; at that point, name its owner and store `ROBOFLOW_API_KEY` in Colab Secrets. Store any required fine-grained read-only GitHub token there as well.
 - Keep `.env`, local TOML configuration, datasets, training outputs, and caches ignored.
 - Preserve only sanitized example configuration in Git.
 
@@ -208,13 +208,15 @@ Recommended Drive layout:
 
 ```text
 rubber-band-gun-ai-data/
-├── raw/<capture-id>/images/
-├── raw/<capture-id>/data_angles.csv
+├── pi-upload/
+│   ├── raw/<capture-id>/images/
+│   ├── raw/<capture-id>/data_angles.csv
+│   └── smoke/<capture-id>/
 ├── processed/<dataset-version>/
 └── runs/<run-id>/
 ```
 
-Each raw capture is immutable. Generate a manifest containing filename, size/hash, yaw label, capture ID, and train/validation/test split. Split by capture session, not only by random image, to reduce leakage between near-identical consecutive frames. Lock a test set captured in later, independent sessions with different target positions, distances, and lighting; do not use it for model or threshold selection.
+The Pi uploader owns `pi-upload/`; Colab reads that ingress and writes only `processed/` and `runs/`. Each raw capture is immutable. Generate a manifest containing filename, size/hash, yaw label, capture ID, and train/validation/test split. Split by capture session, not only by random image, to reduce leakage between near-identical consecutive frames. Lock a test set captured in later, independent sessions with different target positions, distances, and lighting; do not use it for model or threshold selection.
 
 Pin direct dependencies in the repository because Colab runtimes and preinstalled packages change. Do not depend on notebook execution order that is invisible to a clean runtime.
 
@@ -291,7 +293,7 @@ Hardware-in-the-loop checks stay on the Pi and are manually initiated with actua
 3. Write the preprocessing contract and add a log/overlay-only inference mode with all actuators disabled.
 4. Copy the reference models and minimum evaluation runtime directly to the Pi without treating them as promoted repository artifacts, then capture a small independent diagnostic set.
 5. Evaluate the supplied YOLO and yaw CNN separately, then follow the baseline decision tree above.
-6. Only if retraining is required, create the project-owned Roboflow/Drive resources and refactor the necessary collection/training path.
+6. Only if retraining is required, create the project-owned Roboflow resource and refactor the necessary collection/training path; continue using the established shared Drive layout.
 7. Before live movement, write the full safety state machine and add fake-hardware/fault-injection tests.
 8. Define calibration-derived acceptance thresholds, promote the accepted model/configuration, and deploy a versioned release.
 9. Build the GitHub Actions/Tailscale deployment in evaluation-only mode, test version switching and rollback, and enable movement-capable deployment only after the hardware and safety gates pass.

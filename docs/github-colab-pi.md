@@ -22,12 +22,12 @@ Work on short-lived branches, open a pull request into `main`, and merge only af
 3. Sign in to GitHub in the browser, allow Colab access to private repositories when prompted, and then open `notebooks/00_environment_check.ipynb` from the README badge. The notebook secret cannot grant access to the notebook before it opens.
 4. Run all cells in a fresh runtime.
 5. Approve Drive mounting and verify these directories:
-   - `MyDrive/rubber-band-gun-ai-data/raw`
+   - `MyDrive/rubber-band-gun-ai-data/pi-upload/raw`
+   - `MyDrive/rubber-band-gun-ai-data/pi-upload/smoke`
    - `MyDrive/rubber-band-gun-ai-data/processed`
-   - `MyDrive/rubber-band-gun-ai-data/smoke`
    - `MyDrive/rubber-band-gun-ai-data/runs`
 
-Use `docs/data-flow-smoke-test.md` to send one unlabeled camera bundle through Pi, Tailscale, Drive, and Colab before collecting real data.
+The Pi-owned `pi-upload/` tree is created during [Pi direct Drive upload](pi-drive-upload.md) setup; do not create it from Colab or the Drive web UI. Use [the data-flow smoke test](data-flow-smoke-test.md) to send one unlabeled camera bundle through Pi, Drive, and Colab before collecting real data.
 
 Use an individual token per student. Do not paste tokens into notebook cells or share them with the team.
 

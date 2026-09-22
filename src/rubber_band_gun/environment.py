@@ -11,13 +11,17 @@ from pathlib import Path
 
 @dataclass(frozen=True)
 class ProjectWorkspace:
-    """Versioned external-data layout used by Colab runs."""
+    """External-data layout shared by the Pi uploader and Colab runs."""
 
     root: Path
 
     @property
+    def pi_upload(self) -> Path:
+        return self.root / "pi-upload"
+
+    @property
     def raw(self) -> Path:
-        return self.root / "raw"
+        return self.pi_upload / "raw"
 
     @property
     def processed(self) -> Path:
@@ -25,14 +29,15 @@ class ProjectWorkspace:
 
     @property
     def smoke(self) -> Path:
-        return self.root / "smoke"
+        return self.pi_upload / "smoke"
 
     @property
     def runs(self) -> Path:
         return self.root / "runs"
 
     def create(self) -> None:
-        for directory in (self.raw, self.processed, self.smoke, self.runs):
+        """Create Colab-owned output directories, not Pi upload ingress."""
+        for directory in (self.processed, self.runs):
             directory.mkdir(parents=True, exist_ok=True)
 
 

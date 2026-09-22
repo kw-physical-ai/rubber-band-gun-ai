@@ -32,14 +32,16 @@ def verify_smoke_bundle(bundle: Path) -> dict[str, object]:
 
     bundle = bundle.resolve()
     manifest_path = bundle / "manifest.json"
+    if manifest_path.is_symlink():
+        raise ValueError("manifest.json cannot be a symbolic link")
     manifest = json.loads(manifest_path.read_text(encoding="utf-8"))
     if manifest.get("schema_version") != SCHEMA_VERSION:
         raise ValueError(f"unsupported smoke schema: {manifest.get('schema_version')}")
     capture_id = manifest.get("capture_id")
-    if not isinstance(capture_id, str) or not re.fullmatch(
-        r"smoke-\d{8}T\d{6}Z", capture_id
-    ):
+    if not isinstance(capture_id, str) or not re.fullmatch(r"smoke-\d{8}T\d{6}Z", capture_id):
         raise ValueError(f"invalid capture ID: {capture_id}")
+    if bundle.name != capture_id:
+        raise ValueError(f"bundle directory and capture ID differ: {bundle.name} != {capture_id}")
 
     entries = manifest.get("files")
     if not isinstance(entries, list) or not entries:
@@ -54,8 +56,8 @@ def verify_smoke_bundle(bundle: Path) -> dict[str, object]:
         expected_paths.add(relative_name)
 
         path = _safe_bundle_path(bundle, relative_name)
-        if not path.is_file():
-            raise ValueError(f"missing file: {relative_name}")
+        if path.is_symlink() or not path.is_file():
+            raise ValueError(f"missing or unsupported file: {relative_name}")
         size = path.stat().st_size
         if size != entry["bytes"]:
             raise ValueError(f"size mismatch: {relative_name}")
@@ -65,10 +67,13 @@ def verify_smoke_bundle(bundle: Path) -> dict[str, object]:
 
     if "frames.csv" not in expected_paths:
         raise ValueError("frames.csv is not covered by the manifest")
+    all_paths = list(bundle.rglob("*"))
+    if any(path.is_symlink() for path in all_paths):
+        raise ValueError("bundle contains a symbolic link")
     actual_paths = {
         path.relative_to(bundle).as_posix()
-        for path in bundle.rglob("*")
-        if path.is_file() and path.name != "manifest.json"
+        for path in all_paths
+        if path.is_file() and path.relative_to(bundle).as_posix() != "manifest.json"
     }
     if actual_paths != expected_paths:
         raise ValueError("bundle files do not exactly match the manifest")

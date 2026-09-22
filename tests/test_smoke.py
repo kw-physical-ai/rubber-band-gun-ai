@@ -15,9 +15,7 @@ def make_bundle(root: Path) -> Path:
     image.write_bytes(b"not-a-real-jpeg-but-valid-for-contract-testing")
     frames = bundle / "frames.csv"
     with frames.open("w", newline="", encoding="utf-8") as stream:
-        writer = csv.DictWriter(
-            stream, fieldnames=("filename", "captured_at_utc", "label_status")
-        )
+        writer = csv.DictWriter(stream, fieldnames=("filename", "captured_at_utc", "label_status"))
         writer.writeheader()
         writer.writerow(
             {
@@ -66,3 +64,22 @@ def test_verify_smoke_bundle_rejects_unlisted_file(tmp_path: Path) -> None:
 
     with pytest.raises(ValueError, match="exactly match"):
         verify_smoke_bundle(bundle)
+
+
+def test_verify_smoke_bundle_rejects_nested_manifest_named_file(tmp_path: Path) -> None:
+    bundle = make_bundle(tmp_path)
+    nested = bundle / "unexpected" / "manifest.json"
+    nested.parent.mkdir()
+    nested.write_text("unexpected", encoding="utf-8")
+
+    with pytest.raises(ValueError, match="exactly match"):
+        verify_smoke_bundle(bundle)
+
+
+def test_verify_smoke_bundle_rejects_mismatched_directory_name(tmp_path: Path) -> None:
+    bundle = make_bundle(tmp_path)
+    renamed = bundle.with_name("smoke-20260922T000001Z")
+    bundle.rename(renamed)
+
+    with pytest.raises(ValueError, match="directory and capture ID differ"):
+        verify_smoke_bundle(renamed)

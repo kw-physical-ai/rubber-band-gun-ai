@@ -8,9 +8,11 @@ def test_workspace_creates_expected_directories(tmp_path: Path) -> None:
 
     workspace.create()
 
-    assert workspace.raw.is_dir()
+    assert workspace.pi_upload == workspace.root / "pi-upload"
+    assert workspace.raw == workspace.root / "pi-upload" / "raw"
+    assert workspace.smoke == workspace.root / "pi-upload" / "smoke"
+    assert not workspace.pi_upload.exists()
     assert workspace.processed.is_dir()
-    assert workspace.smoke.is_dir()
     assert workspace.runs.is_dir()
 
 
