@@ -14,6 +14,8 @@ GitHub repository -> Google Colab -> model candidate PR -> GitHub Actions -> Ras
 
 Pi → Drive → Colab 데이터 연결은 [data-flow smoke test](docs/data-flow-smoke-test.md)로 확인합니다. Tailscale은 Pi 원격 접속에 사용하고, 데이터는 Pi에서 Drive로 직접 업로드합니다. 이 테스트의 이미지는 연결 검증 전용이며 학습 데이터로 사용하지 않습니다.
 
+발사 없는 yaw 데이터 수집 형식과 향후 명중 시험 형식은 [data contracts](docs/data-contract.md)에 분리되어 있습니다. 실제 Pi 실행 순서는 [yaw data collection](docs/yaw-data-collection.md)을 따릅니다. `scripts/pi/collect-yaw-data.py`는 보정된 yaw/pitch만 제어하며 발사 핀이나 발사 명령을 포함하지 않습니다. 실제 하드웨어 한계가 기록된 설정에서 `calibrated=true`로 바꾸기 전까지는 preview-only로만 동작합니다.
+
 ## Colab 시작
 
 [![Open environment check in Colab](https://colab.research.google.com/assets/colab-badge.svg)](https://colab.research.google.com/github/kw-physical-ai/rubber-band-gun-ai/blob/main/notebooks/00_environment_check.ipynb)

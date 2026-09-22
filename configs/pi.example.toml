@@ -1,0 +1,35 @@
+[hardware]
+# Motion-capable collection refuses to start until the actual assembly is calibrated.
+calibrated = false
+calibration_id = "replace-after-calibration"
+aiming_reference = "replace-with-the-fixed-visual-alignment-reference"
+
+[camera]
+width = 640
+height = 480
+
+[capture]
+# A frame cannot be labeled until this time has elapsed after a servo command.
+settle_seconds = 0.5
+
+[preprocessing]
+rotation = "clockwise_90"
+crop_bottom_ratio = 0.2
+model_width = 224
+model_height = 224
+
+[servo.yaw]
+pin = 18
+center_degrees = 50.0
+# Replace these two values with measured mechanical limits before setting calibrated=true.
+min_degrees = 50.0
+max_degrees = 50.0
+step_degrees = 3.0
+
+[servo.pitch]
+pin = 13
+center_degrees = 90.0
+# Replace these two values with measured mechanical limits before setting calibrated=true.
+min_degrees = 90.0
+max_degrees = 90.0
+step_degrees = 3.0

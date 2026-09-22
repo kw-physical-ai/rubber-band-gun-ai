@@ -23,7 +23,9 @@ dist/
 
 # Local datasets and training runs
 /data/
+/captures/
 /runs/
+*.partial
 
 # OS and editor metadata
 .DS_Store
