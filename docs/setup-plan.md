@@ -139,6 +139,7 @@ Exit gate: `gh auth status` shows `minestero00`, the forced SSH key authenticate
 - Add all four students as organization members with the same repository `Write` permission. This is sufficient to create branches, open pull requests, review, and merge.
 - Keep at least two organization owners for account continuity; owner status is an administrative responsibility, not a different development workflow.
 - Use short-lived branches and pull requests into `main`. Any member may open or merge a pull request.
+- The current GitHub plan does not allow branch protection on this private repository (the API returns an upgrade-or-public requirement). Until the plan changes, PR use and waiting for the `python` CI check are team conventions rather than enforced repository rules. Do not make the repository public merely to obtain this control.
 - Record hardware experiments and model evaluations as Issues that reference the code commit, hardware revision, model hash, dataset/run ID, result, and next decision.
 - Use one organization Project with `Backlog`, `Ready`, `In Progress`, `Hardware Blocked`, `Review`, and `Done` states.
 - Treat `main` as the integration branch and the source for evaluation releases. Deployment is manually dispatched at first; automatic deployment after merge is enabled only after version switching and rollback have been tested. Neither mode may arm or fire the mechanism.

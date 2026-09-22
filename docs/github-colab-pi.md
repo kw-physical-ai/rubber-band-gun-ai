@@ -11,6 +11,10 @@ GitHub main -> GitHub Actions -> Tailscale -> Pi release directory
 
 Neither path starts a motor or firing process.
 
+## GitHub collaboration
+
+Work on short-lived branches, open a pull request into `main`, and merge only after the `python` CI job succeeds. The present GitHub plan cannot enforce branch protection on this private repository, so this is a team rule for now. Do not make the course repository public as a workaround.
+
 ## Colab
 
 1. Create a fine-grained GitHub token for only `kw-physical-ai/rubber-band-gun-ai` with repository contents read access.
