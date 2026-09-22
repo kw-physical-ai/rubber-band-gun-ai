@@ -12,6 +12,8 @@ GitHub repository -> Google Colab -> model candidate PR -> GitHub Actions -> Ras
 
 하드웨어 검증 전에는 카메라와 모델 평가만 수행합니다. 자동 배포는 모터 또는 발사 장치를 구동하지 않습니다.
 
+Pi → Tailscale → Drive → Colab 데이터 연결은 [data-flow smoke test](docs/data-flow-smoke-test.md)로 확인합니다. 이 테스트의 이미지는 연결 검증 전용이며 학습 데이터로 사용하지 않습니다.
+
 ## Colab 시작
 
 [![Open environment check in Colab](https://colab.research.google.com/assets/colab-badge.svg)](https://colab.research.google.com/github/kw-physical-ai/rubber-band-gun-ai/blob/main/notebooks/00_environment_check.ipynb)

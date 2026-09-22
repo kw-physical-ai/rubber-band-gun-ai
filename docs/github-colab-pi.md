@@ -24,7 +24,10 @@ Work on short-lived branches, open a pull request into `main`, and merge only af
 5. Approve Drive mounting and verify these directories:
    - `MyDrive/rubber-band-gun-ai-data/raw`
    - `MyDrive/rubber-band-gun-ai-data/processed`
+   - `MyDrive/rubber-band-gun-ai-data/smoke`
    - `MyDrive/rubber-band-gun-ai-data/runs`
+
+Use `docs/data-flow-smoke-test.md` to send one unlabeled camera bundle through Pi, Tailscale, Drive, and Colab before collecting real data.
 
 Use an individual token per student. Do not paste tokens into notebook cells or share them with the team.
 

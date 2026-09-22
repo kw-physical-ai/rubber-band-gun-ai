@@ -24,11 +24,15 @@ class ProjectWorkspace:
         return self.root / "processed"
 
     @property
+    def smoke(self) -> Path:
+        return self.root / "smoke"
+
+    @property
     def runs(self) -> Path:
         return self.root / "runs"
 
     def create(self) -> None:
-        for directory in (self.raw, self.processed, self.runs):
+        for directory in (self.raw, self.processed, self.smoke, self.runs):
             directory.mkdir(parents=True, exist_ok=True)
 
 

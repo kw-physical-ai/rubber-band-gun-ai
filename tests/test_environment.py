@@ -10,6 +10,7 @@ def test_workspace_creates_expected_directories(tmp_path: Path) -> None:
 
     assert workspace.raw.is_dir()
     assert workspace.processed.is_dir()
+    assert workspace.smoke.is_dir()
     assert workspace.runs.is_dir()
 
 
