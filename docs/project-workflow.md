@@ -117,7 +117,7 @@ Yaw capture는 사람이 고정된 조준 기준에 표적을 맞춘 뒤 카메�
 
 `notebooks/10_build_yaw_dataset.ipynb`와 `scripts/build-yaw-dataset.py`가 이 계약을 구현합니다. Builder는 source bundle을 다시 검증하고 `human-aligned` 프레임만 복사하며, 한 capture가 여러 split에 들어가거나 전처리 설정이 섞이면 중단합니다. 결과는 `labels.csv`와 `dataset_manifest.json`을 포함한 immutable directory로 게시됩니다.
 
-따라서 현재 자동화 흐름은 `Pi capture → Drive upload → Colab bundle 검증 → versioned dataset`까지 이어집니다. 기존 모델 baseline 평가와 학습 run 생성부터는 아직 문서 계약만 있고 실행 코드는 없습니다.
+따라서 현재 자동화 흐름은 `Pi capture → Drive upload → Colab bundle 검증 → versioned dataset`까지 이어집니다. 각 단계의 trigger, 자동 검사, 수동 gate와 복구 방법은 [자동화 흐름](automation-flow.md)에 정리되어 있습니다. 기존 모델 baseline 평가와 학습 run 생성부터는 아직 문서 계약만 있고 실행 코드는 없습니다.
 
 ## 6. Colab 학습 run
 

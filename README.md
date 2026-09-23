@@ -83,7 +83,7 @@ python scripts/check-notebooks.py
 - baseline 진단과 모델·threshold 선택에는 validation만 사용하고, locked test는 최종 후보를 고정한 뒤 한 번만 엽니다.
 - `diagnostic` 프레임과 실제 shot 결과는 명시적으로 승격하기 전까지 학습 데이터가 아닙니다.
 
-전체 협업·학습·모델 승격 절차는 [프로젝트 워크플로](docs/project-workflow.md), 파일 형식은 [데이터 계약](docs/data-contract.md)에 설명되어 있습니다.
+전체 협업·학습·모델 승격 절차는 [프로젝트 워크플로](docs/project-workflow.md), 자동·수동 단계와 실패 복구는 [자동화 흐름](docs/automation-flow.md), 파일 형식은 [데이터 계약](docs/data-contract.md)에 설명되어 있습니다.
 
 ## 저장소 구조
 
