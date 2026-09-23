@@ -63,6 +63,8 @@ The manifest binds the capture ID, calibration ID, fixed aiming reference, yaw c
 
 The current code defines and validates this table but cannot actuate the firing servo. A later firing application must require a local arm action and a separate local single-shot action, and it must link each result to an immutable capture/model/calibration version.
 
+The current row schema does not yet carry that complete lineage. Before physical shot testing, add a versioned shot-run manifest that binds the table to the model hash, calibration ID, preprocessing schema, target coordinate system, and hashes of retained target evidence.
+
 The `hit`, `miss`, or `invalid` result must come from post-shot target evidence that does not use the model prediction as its source. Define the hit region before the run, preserve a target image or measured impact position for each shot where practical, and record the outcome before inspecting aggregate model performance. A locked shot-evaluation set is not used for tuning; tuning creates a new model version and requires a new locked run.
 
 ## Dataset splits

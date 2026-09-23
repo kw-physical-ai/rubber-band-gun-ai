@@ -11,3 +11,5 @@
 - yaw range 또는 class names
 - validation 및 locked-test metrics
 - compatible Ultralytics/PyTorch versions
+
+모델 후보 생성, 비교, 승인 절차는 [프로젝트 워크플로](../docs/project-workflow.md)를 따릅니다. 현재 승격된 모델은 없습니다.

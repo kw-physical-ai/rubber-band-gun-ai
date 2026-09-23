@@ -1,5 +1,7 @@
 # Rubber Band Gun AI - development setup plan
 
+이 문서는 장기 설계와 안전 경계를 설명합니다. 팀의 현재 실행 순서와 구현 상태는 [프로젝트 워크플로](project-workflow.md)를 기준으로 합니다.
+
 ## 1. Goal and operating boundary
 
 Build one reproducible workflow for:
