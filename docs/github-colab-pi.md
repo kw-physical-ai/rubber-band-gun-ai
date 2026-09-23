@@ -43,23 +43,26 @@ Run GPU cells in the Colab UI. Colab Enterprise has `gcloud colab` runtime and n
 
 ## Raspberry Pi interactive inventory
 
-From the Mac:
+From a local development machine at the repository root:
 
 ```bash
-scp scripts/pi/inventory.sh t1-faker@100.94.55.34:/tmp/rbg-inventory.sh
-ssh t1-faker@100.94.55.34 'bash /tmp/rbg-inventory.sh'
+export PI_SSH_TARGET='<pi-user>@<tailscale-host>'
+scp scripts/pi/inventory.sh "${PI_SSH_TARGET}:/tmp/rbg-inventory.sh"
+ssh "$PI_SSH_TARGET" 'bash /tmp/rbg-inventory.sh'
 ```
 
 This script is read-only. Save the output in an Issue before selecting Pi packages.
 
 ## Manual evaluation synchronization
 
-After a commit exists:
+After a commit exists, run from the repository root:
 
 ```bash
+export PI_SSH_TARGET='<pi-user>@<tailscale-host>'
+export PI_RELEASE_ROOT='<absolute-release-root>'
 scripts/deploy-eval.sh \
-  t1-faker@100.94.55.34 \
-  /home/t1-faker/rubber-band-gun \
+  "$PI_SSH_TARGET" \
+  "$PI_RELEASE_ROOT" \
   "$(git rev-parse HEAD)"
 ```
 
@@ -71,9 +74,9 @@ The script refuses a dirty tracked worktree or a SHA different from `HEAD`, tran
 Repository variables:
 
 - `PI_DEPLOY_ENABLED=false` initially
-- `PI_HOST=100.94.55.34`
-- `PI_USER=t1-faker`
-- `PI_RELEASE_ROOT=/home/t1-faker/rubber-band-gun`
+- `PI_HOST`: Pi Tailscale hostname or address
+- `PI_USER`: dedicated Pi deployment account
+- `PI_RELEASE_ROOT`: absolute release directory owned by that account
 
 Required secrets before enabling deployment:
 

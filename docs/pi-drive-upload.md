@@ -42,7 +42,7 @@ sudo bash /tmp/install-rclone.sh
 rclone version
 ```
 
-Through the Pi's VNC session, log in as the same non-root `t1-faker` user that will run uploads, then run:
+Through the Pi's VNC session, log in as the same non-root runtime user that will run uploads, then run:
 
 ```bash
 rclone config
@@ -95,7 +95,7 @@ rclone lsd project-drive:
 
 The final listing should contain only `raw` and `smoke`. In Drive, confirm that they appear under `rubber-band-gun-ai-data/pi-upload/` and that unrelated personal files do not appear in `rclone lsd project-drive:`.
 
-Display the active config path, then protect the local refresh token. This prevents accidental disclosure to other Linux users, but it does not protect it from teammates who share the same `t1-faker` login:
+Display the active config path, then protect the local refresh token. This prevents accidental disclosure to other Linux users, but it does not protect it from teammates who share the same runtime login:
 
 ```bash
 rclone config file
@@ -103,7 +103,7 @@ chmod 700 ~/.config/rclone
 chmod 600 ~/.config/rclone/rclone.conf
 ```
 
-The permission commands assume `rclone config file` reports the default path under `/home/t1-faker/.config/rclone`. If it reports another path, apply the equivalent modes to that directory and file instead. Do not run `rclone config` with `sudo`.
+The permission commands assume `rclone config file` reports the default path under `$HOME/.config/rclone`. If it reports another path, apply the equivalent modes to that directory and file instead. Do not run `rclone config` with `sudo`.
 
 ## 4. Upload one completed bundle
 
@@ -111,7 +111,7 @@ Copy `scripts/pi/upload-drive-bundle.sh` to the Pi once. Upload the current smok
 
 ```bash
 bash upload-drive-bundle.sh \
-  "/home/t1-faker/rbg-smoke/$CAPTURE_ID" \
+  "$HOME/rbg-smoke/$CAPTURE_ID" \
   project-drive:smoke
 ```
 
@@ -119,11 +119,11 @@ A future real capture uses:
 
 ```bash
 bash upload-drive-bundle.sh \
-  "/home/t1-faker/share/captures/$CAPTURE_ID" \
+  "$HOME/captures/$CAPTURE_ID" \
   project-drive:raw
 ```
 
-The script validates the completed local bundle, removes its write permissions, freezes a verified manifest snapshot, copies payload files without deleting the source, verifies again after transfer, and publishes the snapshot as `manifest.json` last. Colab independently verifies that manifest before consuming the bundle. This detects accidental missing, modified, or unsupported filesystem entries; it does not prove who produced the data or defend against someone who controls the shared `t1-faker` account.
+The script validates the completed local bundle, removes its write permissions, freezes a verified manifest snapshot, copies payload files without deleting the source, verifies again after transfer, and publishes the snapshot as `manifest.json` last. Colab independently verifies that manifest before consuming the bundle. This detects accidental missing, modified, or unsupported filesystem entries; it does not prove who produced the data or defend against someone who controls the shared runtime account.
 
 If an upload is interrupted before `manifest.json` appears remotely, rerun the same command with the unchanged local bundle; immutable matching files are reused. If rclone reports an immutable-file conflict, inspect the remote capture directory. Remove that incomplete directory through Drive only after confirming it has no valid completion manifest/report, then create a fresh capture ID and retry. Never overwrite a completed capture ID.
 

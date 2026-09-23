@@ -9,7 +9,7 @@ Run the collector from a repository checkout because it imports the shared data-
 ```bash
 git clone git@github.com:kw-physical-ai/rubber-band-gun-ai.git
 cd rubber-band-gun-ai
-source /home/t1-faker/venv/bin/activate
+source "$HOME/venv/bin/activate"
 python -m pip install --no-deps -e .
 cp configs/pi.example.toml configs/pi.toml
 ```
@@ -43,7 +43,7 @@ Motion mode also requires the Pi's `pigpiod` service. Start or inspect that serv
 ```bash
 python scripts/pi/collect-yaw-data.py \
   --config configs/pi.toml \
-  --output-root /home/t1-faker/captures \
+  --output-root "$HOME/captures" \
   --enable-motion
 ```
 
@@ -54,9 +54,9 @@ Press `Esc` to finalize the saved frames into one completed directory containing
 Validate and upload the completed directory:
 
 ```bash
-python scripts/check-yaw-capture.py /home/t1-faker/captures/capture-<UTC>
-bash /home/t1-faker/upload-drive-bundle.sh \
-  /home/t1-faker/captures/capture-<UTC> \
+python scripts/check-yaw-capture.py "$HOME/captures/capture-<UTC>"
+bash "$HOME/upload-drive-bundle.sh" \
+  "$HOME/captures/capture-<UTC>" \
   project-drive:raw
 ```
 

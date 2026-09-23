@@ -14,19 +14,7 @@ The permitted target is an inanimate course target in a controlled test area. Pe
 
 Arming and firing are separate actions. Firing accepts only a local, deliberate input; SSH, CI, deployment scripts, and model output cannot invoke it. One press produces at most one firing pulse, and holding a key cannot repeat shots. Camera loss, stale frames/input, model error, GPIO error, process restart, or lost control connection returns the system to disarmed. A software stop and a physical actuator-power cutoff must both be available during live tests.
 
-## 2. Verified starting point (2026-09-22)
-
-- GitHub repository: `kw-physical-ai/rubber-band-gun-ai`
-- Visibility/state at initial inspection: private and empty; `minestero00` has admin access.
-- GitHub CLI: authenticated and active as `minestero00`.
-- Local repository: initialized on `main`, with `origin` pointing to the organization repository.
-- Intended remote: `git@github.com:kw-physical-ai/rubber-band-gun-ai.git`.
-- The default SSH agent currently authenticates `git@github.com` as another GitHub account. The local `~/.ssh/id_ed25519` key authenticates as `minestero00`, so the repository needs an explicit SSH-key selection.
-- `physical-ai/` is local reference material and is ignored by the root `.gitignore`.
-- Tailscale sees `t1-faker` (`100.94.55.34`) as an active Linux node over a direct connection.
-- Team members can access `t1-faker@100.94.55.34` interactively with the shared class password. Non-interactive public-key authentication is not configured, but it is optional unless automated deployment is introduced.
-
-## 3. What the course material implements
+## 2. What the course material implements
 
 The reference pipeline is:
 
@@ -61,51 +49,13 @@ Do not begin with a full new training-data collection. First reconcile preproces
 3. YOLO passes but yaw error varies by position/session: collect yaw data and retrain the CNN only;
 4. YOLO fails on the actual target/environment: collect detection annotations and retrain YOLO, then reassess the CNN.
 
-## 4. Target repository layout
+## 3. Repository boundaries
 
-```text
-rubber-band-gun-ai/
-├── README.md
-├── pyproject.toml
-├── requirements/
-│   ├── base.txt
-│   ├── colab.txt
-│   └── raspberry-pi.txt
-├── configs/
-│   ├── pi.example.toml
-│   └── training.example.toml
-├── src/rubber_band_gun/
-│   ├── camera.py
-│   ├── config.py
-│   ├── controller.py
-│   ├── safety.py
-│   ├── vision.py
-│   └── yaw_model.py
-├── apps/
-│   ├── collect_data.py
-│   └── run_inference.py
-├── notebooks/
-│   ├── train_target_yolo.ipynb
-│   └── train_yaw_cnn.ipynb
-├── scripts/
-│   ├── bootstrap_pi.sh
-│   ├── deploy_pi.sh
-│   └── verify_pi.sh
-├── tests/
-│   ├── test_config.py
-│   ├── test_controller.py
-│   ├── test_preprocessing.py
-│   └── test_safety.py
-├── docs/
-│   ├── hardware-calibration.md
-│   ├── data-contract.md
-│   └── setup-plan.md
-└── artifacts/              # promoted model pointers/files only
-```
+The current directory roles are documented in the root [README](../README.md). Shared Python code belongs in `src/`, hardware-facing entry points in `scripts/pi/`, reproducible Colab sources in `notebooks/`, and hardware-free verification in `tests/`.
 
-Do not commit raw camera images, generated datasets, notebook outputs, credentials, local configuration, or arbitrary training runs.
+Do not commit raw camera images, generated datasets, notebook outputs, credentials, local configuration, arbitrary training runs, course reference files under `physical-ai/`, or machine-specific access details.
 
-## 5. Phased implementation
+## 4. Phased implementation
 
 ### Phase 0 - protect inputs and defer optional training services
 
@@ -117,29 +67,12 @@ Do not commit raw camera images, generated datasets, notebook outputs, credentia
 
 Exit gate: secret scanning finds no live credentials in files to be committed.
 
-### Phase 1 - bootstrap Git without account ambiguity
-
-Run from the repository root:
-
-```bash
-gh auth switch --hostname github.com --user minestero00
-ssh -T -o IdentitiesOnly=yes -i ~/.ssh/id_ed25519 git@github.com
-git init -b main
-git config core.sshCommand "ssh -i ~/.ssh/id_ed25519 -o IdentitiesOnly=yes"
-git remote add origin git@github.com:kw-physical-ai/rubber-band-gun-ai.git
-git ls-remote origin
-```
-
-Set repository-local author identity if the global identity is not the one wanted for this course. Then commit the scaffold and push `main`. Do not change the remote to HTTPS merely to work around the SSH-account mismatch.
-
-Exit gate: `gh auth status` shows `minestero00`, the forced SSH key authenticates as `minestero00`, and `git ls-remote origin` succeeds.
-
-### Team collaboration model
+### Phase 1 - team collaboration model
 
 - Add all four students as organization members with the same repository `Write` permission. This is sufficient to create branches, open pull requests, review, and merge.
 - Keep at least two organization owners for account continuity; owner status is an administrative responsibility, not a different development workflow.
 - Use short-lived branches and pull requests into `main`. Any member may open or merge a pull request.
-- The current GitHub plan does not allow branch protection on this private repository (the API returns an upgrade-or-public requirement). Until the plan changes, PR use and waiting for the `python` CI check are team conventions rather than enforced repository rules. Do not make the repository public merely to obtain this control.
+- Require pull requests and a successful `python` CI job by team convention wherever repository rules cannot enforce them. Do not make the course repository public merely to obtain enforcement.
 - Record hardware experiments and model evaluations as Issues that reference the code commit, hardware revision, model hash, dataset/run ID, result, and next decision.
 - Use one organization Project with `Backlog`, `Ready`, `In Progress`, `Hardware Blocked`, `Review`, and `Done` states.
 - Treat `main` as the integration branch and the source for evaluation releases. Deployment is manually dispatched at first; automatic deployment after merge is enabled only after version switching and rollback have been tested. Neither mode may arm or fire the mechanism.
@@ -162,7 +95,7 @@ Exit gate: preprocessing and controller tests run on macOS/Linux without Pi hard
 
 For class exercises, connect through Tailscale and use the existing shared password. Team members who only work in GitHub or Colab do not need separate Pi SSH setup. The GitHub Actions pipeline uses one separate deploy-only service key; team members do not copy or share that private key.
 
-The supplied Linux username is `t1-faker`. Use the unambiguous IP form (`ssh t1-faker@100.94.55.34`) until MagicDNS name resolution is explicitly verified; the equivalent explicit-user hostname form is `ssh -l t1-faker t1-faker`. Do not expose port 22 publicly or share a private SSH key among team members.
+Keep the runtime username, Tailscale hostname or IP, and release path in local shell variables or GitHub repository variables rather than this repository. Use an explicit `user@host` SSH target and do not expose port 22 publicly or share a private SSH key among team members.
 
 After access works, inventory before installing anything:
 
@@ -244,9 +177,9 @@ Candidate pull requests contain the notebook/code changes, a Git LFS pointer for
 - Track only intentionally promoted `.pt`/`.pth` artifacts with Git LFS. The canonical release record is a versioned JSON manifest in Git containing the Git tag/commit, LFS object hash, SHA-256, data-manifest hash, calibration version, input/preprocessing schema, yaw scale, dependency lock identifier, and metrics.
 - Before training, define promotion thresholds from the calibrated servo resolution, target angular size at the farthest supported distance, and allowed alignment error. Never deploy based only on training loss.
 - Promotion requires validation yaw MAE, locked-test yaw MAE, target recall, no-target false-positive rate, recorded-frame end-to-end alignment error, and all safety fault tests. Model selection uses validation data; only the final candidate is evaluated on the locked test set.
-- Deploy a tagged commit and matching model manifest through `scripts/deploy_pi.sh` using SSH/rsync.
+- Deploy a tagged commit and matching model manifest through `scripts/deploy-eval.sh` using SSH/rsync.
 - Verify SHA-256 hashes on the Pi before activation.
-- Install releases under versioned directories such as `/opt/rubber-band-gun/releases/<tag>`, switch a `current` symlink only after verification, and retain the previous known-good release. Rollback stops the service, repoints `current`, verifies the manifest/hash, and restarts disarmed.
+- Install releases under a configured release root in `releases/<tag>`, switch a `current` symlink only after verification, and retain the previous known-good release. Rollback stops the service, repoints `current`, verifies the manifest/hash, and restarts disarmed.
 
 Use a push-based GitHub Actions deployment with GitHub as the control point:
 
@@ -255,7 +188,7 @@ merge to main
   -> hosted GitHub runner checks out code and Git LFS artifacts
   -> CPU tests and manifest/hash checks
   -> official Tailscale GitHub Action joins as ephemeral tag:ci
-  -> deploy-only SSH key connects to t1-faker
+  -> deploy-only SSH key connects to the configured Pi account
   -> rsync uploads releases/<commit-sha>
   -> Pi-side fixed deployment command verifies and activates the release
   -> health check; otherwise rollback
@@ -286,10 +219,10 @@ On pull requests, run CPU-only checks:
 
 Hardware-in-the-loop checks stay on the Pi and are manually initiated with actuator power disconnected unless the test explicitly requires it. Hosted CI receives no Pi/Tailscale credentials, does not run on a hardware-attached runner, and cannot invoke the actuator entry point.
 
-## 6. Recommended implementation order
+## 5. Recommended implementation order
 
-1. Initialize Git with the repository-local SSH key override and push a minimal code/test scaffold; keep unaccepted reference model binaries outside Git.
-2. Sign in to `t1-faker` with the existing class credentials and record OS, architecture, camera, GPIO, servo, power, and physical-cutoff details.
+1. Keep unaccepted reference model binaries and course material outside Git; use the organization repository as the source of shared code.
+2. Sign in to the configured Pi runtime account and record OS, architecture, camera, GPIO, servo, power, and physical-cutoff details.
 3. Write the preprocessing contract and add a log/overlay-only inference mode with all actuators disabled.
 4. Copy the reference models and minimum evaluation runtime directly to the Pi without treating them as promoted repository artifacts, then capture a small independent diagnostic set.
 5. Evaluate the supplied YOLO and yaw CNN separately, then follow the baseline decision tree above.
@@ -298,10 +231,10 @@ Hardware-in-the-loop checks stay on the Pi and are manually initiated with actua
 8. Define calibration-derived acceptance thresholds, promote the accepted model/configuration, and deploy a versioned release.
 9. Build the GitHub Actions/Tailscale deployment in evaluation-only mode, test version switching and rollback, and enable movement-capable deployment only after the hardware and safety gates pass.
 
-## 7. Acceptance checklist
+## 6. Acceptance checklist
 
-- [ ] `physical-ai/` and all credentials are absent from Git history.
-- [ ] GitHub CLI and Git-over-SSH both act as the intended account.
+- [ ] `physical-ai/`, machine-specific access details, and credentials are absent from the tracked tree.
+- [ ] Each contributor can fetch and push with their own repository-scoped credential.
 - [ ] A fresh clone runs CPU-only imports/tests on macOS and Colab; Pi-only camera/GPIO features run on the documented Pi image.
 - [ ] A fresh Colab runtime trains from a versioned dataset manifest.
 - [ ] Training and Pi inference share preprocessing code or pass the same golden fixtures within the documented numeric tolerance.
@@ -312,7 +245,7 @@ Hardware-in-the-loop checks stay on the Pi and are manually initiated with actua
 - [ ] Live aiming passes before the fire servo is connected/enabled.
 - [ ] Deployment has a tested rollback path.
 
-## 8. Current blockers and next decision
+## 7. Current blockers and next decision
 
 The immediate decision is whether the supplied models already work on the current assembly. Pi access is available interactively through Tailscale and the shared class password, so first inventory the target, reconcile preprocessing, add actuator-free inference, and collect a small diagnostic evaluation set. In parallel, the repository, Colab candidate-PR contract, and evaluation-only GitHub Actions/Tailscale deployment can be built without waiting for final hardware. Full training-data collection and movement-capable activation remain conditional on the baseline result and hardware safety gates.
 
