@@ -115,9 +115,9 @@ Yaw capture는 사람이 고정된 조준 기준에 표적을 맞춘 뒤 카메�
 - 생성에 사용한 Git commit과 패키지 버전
 - 파일 수, yaw 분포와 누락/거부 통계
 
-현재 저장소에는 이 dataset builder가 아직 없습니다. 다음 학습 코드 작업은 개별 프레임 random split을 복사하는 것이 아니라 이 manifest와 capture 단위 split부터 구현해야 합니다.
+`notebooks/10_build_yaw_dataset.ipynb`와 `scripts/build-yaw-dataset.py`가 이 계약을 구현합니다. Builder는 source bundle을 다시 검증하고 `human-aligned` 프레임만 복사하며, 한 capture가 여러 split에 들어가거나 전처리 설정이 섞이면 중단합니다. 결과는 `labels.csv`와 `dataset_manifest.json`을 포함한 immutable directory로 게시됩니다.
 
-따라서 현재 자동화 흐름은 `Pi capture → Drive upload → Pi/Colab bundle 검증`에서 멈춥니다. 검증된 raw bundle을 dataset version으로 조합하는 단계부터는 아직 문서 계약만 있고 실행 코드는 없습니다.
+따라서 현재 자동화 흐름은 `Pi capture → Drive upload → Colab bundle 검증 → versioned dataset`까지 이어집니다. 기존 모델 baseline 평가와 학습 run 생성부터는 아직 문서 계약만 있고 실행 코드는 없습니다.
 
 ## 6. Colab 학습 run
 
@@ -184,10 +184,8 @@ Yaw 라벨 정확도와 실제 명중 여부는 다릅니다. 하드웨어와 �
 
 다음으로 구현할 작업:
 
-1. actuator-free 기존 모델 evaluator
-2. capture 검증과 dataset manifest builder
-3. capture 단위 split을 사용하는 Colab baseline notebook
-4. baseline 결과가 요구할 경우에만 yaw CNN 또는 YOLO training notebook
-5. model manifest validator와 recorded-frame Pi evaluator
+1. actuator-free 기존 모델 evaluator와 Colab baseline notebook
+2. baseline 결과가 요구할 경우에만 yaw CNN 또는 YOLO training notebook
+3. model manifest validator와 recorded-frame Pi evaluator
 
 실제 발사와 movement-capable inference는 위 작업 및 하드웨어 안전 검증 이후의 별도 단계입니다.

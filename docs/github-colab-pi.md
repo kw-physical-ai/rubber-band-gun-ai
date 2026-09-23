@@ -15,6 +15,17 @@ Neither path starts a motor or firing process.
 
 Work on short-lived branches, open a pull request into `main`, and merge only after the `python` CI job succeeds. The present GitHub plan cannot enforce branch protection on this private repository, so this is a team rule for now. Do not make the course repository public as a workaround.
 
+### Four-person access setup
+
+An organization owner performs this once:
+
+1. In `kw-physical-ai`, open **People → Invite member** and invite the other three GitHub accounts as organization **Member**, not Owner.
+2. Create a team such as `project-members`, add all four members, and give that team **Write** access to `rubber-band-gun-ai`.
+3. Keep organization/repository administration with the owners. Write access is the equal day-to-day role: it supports branches, pushes, issues, pull requests, reviews, Actions visibility, and merge under the repository rules without granting deletion or security-setting control.
+4. Each member clones with their own GitHub account and SSH key, and creates their own repository-scoped Colab token. Never share one person's SSH key or token.
+
+If this organization will never contain another repository, organization base permission `Write` is possible, but a repository team makes the intended scope explicit and is safer when another project is added later.
+
 ## Colab
 
 1. Create a fine-grained GitHub token for only `kw-physical-ai/rubber-band-gun-ai` with repository contents read access.
@@ -30,6 +41,10 @@ Work on short-lived branches, open a pull request into `main`, and merge only af
 The Pi-owned `pi-upload/` tree is created during [Pi direct Drive upload](pi-drive-upload.md) setup; do not create it from Colab or the Drive web UI. Use [the data-flow smoke test](data-flow-smoke-test.md) to send one unlabeled camera bundle through Pi, Drive, and Colab before collecting real data.
 
 Use an individual token per student. Do not paste tokens into notebook cells or share them with the team.
+
+Share the single `rubber-band-gun-ai-data` folder with the four Google accounts as **Editor**. Each member adds a shortcut for that shared folder directly under **My Drive** with the same name, so every notebook can use `/content/drive/MyDrive/rubber-band-gun-ai-data`. Do not share the entire personal Drive. A Colab notebook loaded from GitHub, its runtime, Drive authorization, and Colab Secrets are separate: every member opens the GitHub notebook and authorizes their own runtime and accounts. Sharing one running Colab VM or another member's Secret is neither required nor expected.
+
+The Pi keeps its existing folder-scoped Drive OAuth/rclone configuration. Team members need Drive folder access for Colab, but they do not copy the Pi token. Likewise, shared Pi access does not require personal GitHub credentials on the Pi; use a repository-scoped read-only deploy key for pulls or deploy a reviewed release from GitHub Actions when that path is enabled.
 
 ### CLI boundary
 

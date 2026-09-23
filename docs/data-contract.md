@@ -70,3 +70,23 @@ The `hit`, `miss`, or `invalid` result must come from post-shot target evidence 
 ## Dataset splits
 
 Split yaw data by capture ID, not by random individual frames. Frames within one burst are correlated and must remain in the same train, validation, or locked-test partition. If every split uses the same aligner and session conditions, the score may still share that bias; the final physical shot test supplies the independent outcome. Shot results remain evaluation evidence unless the team explicitly versions a later training dataset that includes them.
+
+## Yaw dataset bundle
+
+Schema: `rbg-yaw-dataset/v1`
+
+```text
+dataset-<version>/
+├── images/
+│   ├── train/
+│   ├── validation/
+│   └── locked-test/
+├── labels.csv
+└── dataset_manifest.json
+```
+
+Run `notebooks/10_build_yaw_dataset.ipynb` in Colab or `scripts/build-yaw-dataset.py` locally. The builder verifies every source capture before and after copying, checks copied image bytes against the source manifest, rejects preprocessing mismatches and capture IDs assigned to more than one split, and copies only `human-aligned` frames. It stages the complete directory before renaming it and never overwrites an existing dataset ID. Completed datasets are immutable by team convention; Drive itself does not enforce read-only files or filesystem-level atomicity.
+
+`labels.csv` binds each copied image to its source capture, source filename, timestamp, split, angles, label status, and calibration ID. `dataset_manifest.json` records the builder Git commit and package version, preprocessing contract, source capture manifest hashes, capture IDs per split, included and excluded counts, per-split yaw-offset summary, and SHA-256 for every copied file. `scripts/check-yaw-dataset.py` verifies the completed dataset without requiring the raw folders.
+
+The manifest proves provenance and internal consistency, not that a human alignment is correct or that a split has enough data. Validation-only datasets are allowed for baseline diagnosis. A training run must separately require the splits and condition coverage it needs. Keep `locked-test` empty during ordinary dataset iteration; add those capture IDs only after the candidate model and acceptance thresholds are fixed. If an interrupted runtime leaves `.<dataset-id>.partial`, inspect why it stopped and remove only that exact staging directory before retrying with the same ID.

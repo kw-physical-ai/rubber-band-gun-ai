@@ -33,7 +33,7 @@ Drive / runs + model candidate PR
 | yaw 데이터 수집 | 코드 준비·실기 미검증 | 공통 전처리, 보정 설정, 발사 없는 yaw/pitch 수집, bundle 검증 |
 | 데이터 계약 | 준비됨 | capture manifest, CSV, 전처리 버전, 향후 shot result 형식 |
 | CI | 준비됨 | Ruff, CPU 테스트, 노트북 구조 검증 |
-| 학습 데이터셋 생성 | 미구현 | capture 단위 split과 dataset manifest 코드가 다음 단계 |
+| 학습 데이터셋 생성 | 준비됨 | 검증된 capture를 capture 단위로 분할하고 dataset manifest 생성 |
 | 기존 모델 baseline 평가 | 미구현 | actuator-free YOLO/CNN 평가 코드가 다음 단계 |
 | 재학습 | 미구현 | baseline 결과에 따라 YOLO 또는 yaw CNN만 구현 |
 | Pi 추론/실제 발사 평가 | 미구현 | 하드웨어와 안전 절차 완성 후 진행 |
@@ -62,6 +62,8 @@ python scripts/check-notebooks.py
 [![Open environment check in Colab](https://colab.research.google.com/assets/colab-badge.svg)](https://colab.research.google.com/github/kw-physical-ai/rubber-band-gun-ai/blob/main/notebooks/00_environment_check.ipynb)
 
 비공개 저장소이므로 각 팀원이 자신의 repository-scoped `GITHUB_TOKEN`을 Colab Secret에 등록합니다. 토큰을 공유하거나 셀에 직접 적지 않습니다. 자세한 절차는 [GitHub·Colab·Pi 연결](docs/github-colab-pi.md)을 따릅니다.
+
+환경 확인이 끝나고 실제 yaw capture가 Drive에 올라오면 [dataset builder notebook](notebooks/10_build_yaw_dataset.ipynb)에서 capture ID별 split을 지정해 `processed/<dataset-id>/`를 만듭니다.
 
 ### 3. Pi 작업
 
@@ -101,7 +103,7 @@ tests/          하드웨어 없는 자동 테스트
 ## 다음 구현 순서
 
 1. 표적이 준비되면 actuator-free baseline 진단용 capture와 아직 열지 않을 locked-test capture를 분리해 만든다.
-2. capture 검증과 dataset manifest/split 생성을 Colab 코드로 구현한다.
+2. Colab dataset builder로 검증된 capture를 versioned dataset으로 만든다.
 3. 기존 YOLO와 yaw CNN을 각각 평가한다.
 4. 실패 원인에 따라 보정, yaw CNN 재학습, YOLO 재학습 중 하나만 선택한다.
 5. 승인된 모델 manifest와 recorded-frame 평가를 거쳐 Pi evaluation release를 만든다.
