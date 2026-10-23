@@ -16,9 +16,11 @@ REPOSITORY_ROOT = Path(__file__).resolve().parents[2]
 sys.path.insert(0, str(REPOSITORY_ROOT / "src"))
 
 from rubber_band_gun.capture import CaptureCalibration, YawCaptureSession  # noqa: E402
+from rubber_band_gun.overlay import draw_center_crosshair_bgr  # noqa: E402
 from rubber_band_gun.preprocessing import (  # noqa: E402
     PreprocessingSpec,
     orient_and_crop_rgb,
+    picamera2_rgb888_to_rgb,
 )
 
 
@@ -102,6 +104,7 @@ def main() -> None:
 
     yaw = yaw_config.center
     pitch = pitch_config.center
+    aligned_yaw = None
     session = None
     camera = Picamera2()
     camera_started = False
@@ -123,15 +126,17 @@ def main() -> None:
             pitch = _set_servo(pi, pitch_config, pitch)
             last_motion_at = time.monotonic()
 
-        print("WASD: move | R: center | Space: save | ESC: finish")
+        print("Align the target center to the crosshair, wait for settling, then press E.")
+        print("WASD: move | R: center | E: mark aligned yaw | Space: save | ESC: finish")
         print("Firing is unavailable in this program.")
         if not args.enable_motion:
             print("PREVIEW ONLY: labeled capture and servo motion are disabled")
 
         while True:
-            raw_rgb = camera.capture_array()
+            raw_rgb = picamera2_rgb888_to_rgb(camera.capture_array())
             canonical_rgb = orient_and_crop_rgb(raw_rgb, preprocessing)
             display = cv2.cvtColor(canonical_rgb, cv2.COLOR_RGB2BGR)
+            display = draw_center_crosshair_bgr(display)
             cv2.putText(
                 display,
                 f"yaw={yaw:.1f} pitch={pitch:.1f}",
@@ -139,6 +144,20 @@ def main() -> None:
                 cv2.FONT_HERSHEY_SIMPLEX,
                 0.7,
                 (255, 255, 0),
+                2,
+            )
+            alignment_text = (
+                "aligned yaw: NOT SET (aim, then press E)"
+                if aligned_yaw is None
+                else f"aligned={aligned_yaw:.1f} correction={aligned_yaw - yaw:+.1f}"
+            )
+            cv2.putText(
+                display,
+                alignment_text,
+                (10, 90),
+                cv2.FONT_HERSHEY_SIMPLEX,
+                0.55,
+                (0, 255, 255),
                 2,
             )
             is_settled = time.monotonic() - last_motion_at >= settle_seconds
@@ -176,17 +195,29 @@ def main() -> None:
                 last_motion_at = time.monotonic()
             elif key == ord("w"):
                 pitch = _set_servo(pi, pitch_config, pitch + pitch_config.step)
+                aligned_yaw = None
                 last_motion_at = time.monotonic()
             elif key == ord("s"):
                 pitch = _set_servo(pi, pitch_config, pitch - pitch_config.step)
+                aligned_yaw = None
                 last_motion_at = time.monotonic()
             elif key == ord("r"):
                 yaw = _set_servo(pi, yaw_config, yaw_config.center)
                 pitch = _set_servo(pi, pitch_config, pitch_config.center)
+                aligned_yaw = None
                 last_motion_at = time.monotonic()
+            elif key == ord("e"):
+                if not is_settled:
+                    print("Alignment ignored while servos are settling")
+                    continue
+                aligned_yaw = yaw
+                print(f"Aligned yaw marked: {aligned_yaw:.3f}")
             elif key == ord(" "):
                 if not is_settled:
                     print("Capture ignored while servos are settling")
+                    continue
+                if aligned_yaw is None:
+                    print("Capture ignored: aim at the target and press E first")
                     continue
                 if session is None:
                     session = YawCaptureSession(
@@ -201,9 +232,10 @@ def main() -> None:
                 saved = session.add_frame(
                     raw_rgb,
                     yaw_degrees=yaw,
+                    aligned_yaw_degrees=aligned_yaw,
                     pitch_degrees=pitch,
                 )
-                print(f"Saved {saved}: yaw_offset={yaw - yaw_config.center:.3f}")
+                print(f"Saved {saved}: yaw_offset={aligned_yaw - yaw:.3f}")
     finally:
         if pi is not None:
             pi.set_servo_pulsewidth(yaw_config.pin, 0)

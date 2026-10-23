@@ -11,7 +11,8 @@ My Drive/
 └── rubber-band-gun-ai-data/       # existing owner folder, shared with teammates
     ├── pi-upload/                 # created by rclone, then moved here in Drive
     │   ├── raw/
-    │   └── smoke/
+    │   ├── smoke/
+    │   └── evaluation/
     ├── processed/                 # written by Colab
     └── runs/                      # written by Colab
 ```
@@ -90,10 +91,11 @@ rclone config update project-drive \
   config_refresh_token=false
 rclone mkdir project-drive:raw
 rclone mkdir project-drive:smoke
+rclone mkdir project-drive:evaluation
 rclone lsd project-drive:
 ```
 
-The final listing should contain only `raw` and `smoke`. In Drive, confirm that they appear under `rubber-band-gun-ai-data/pi-upload/` and that unrelated personal files do not appear in `rclone lsd project-drive:`.
+The final listing should contain only `raw`, `smoke`, and `evaluation`. In Drive, confirm that they appear under `rubber-band-gun-ai-data/pi-upload/` and that unrelated personal files do not appear in `rclone lsd project-drive:`.
 
 Display the active config path, then protect the local refresh token. This prevents accidental disclosure to other Linux users, but it does not protect it from teammates who share the same runtime login:
 

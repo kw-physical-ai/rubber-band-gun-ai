@@ -5,6 +5,7 @@ from rubber_band_gun.preprocessing import (
     PREPROCESSING_SCHEMA,
     PreprocessingSpec,
     orient_and_crop_rgb,
+    picamera2_rgb888_to_rgb,
     prepare_model_rgb,
 )
 
@@ -18,6 +19,15 @@ def test_orient_and_crop_matches_live_geometry() -> None:
 
     assert np.array_equal(actual, rotated[:4])
     assert actual.flags.c_contiguous
+
+
+def test_picamera2_rgb888_memory_order_is_converted_to_rgb() -> None:
+    bgr = np.array([[[3, 2, 1], [30, 20, 10]]], dtype=np.uint8)
+
+    rgb = picamera2_rgb888_to_rgb(bgr)
+
+    assert np.array_equal(rgb, [[[1, 2, 3], [10, 20, 30]]])
+    assert rgb.flags.c_contiguous
 
 
 def test_prepare_model_rgb_has_declared_shape() -> None:

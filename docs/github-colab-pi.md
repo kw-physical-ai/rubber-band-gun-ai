@@ -58,6 +58,7 @@ The detailed behavior behind CI, upload, dataset creation and optional Pi deploy
 5. Approve Drive mounting and verify these directories:
    - `MyDrive/rubber-band-gun-ai-data/pi-upload/raw`
    - `MyDrive/rubber-band-gun-ai-data/pi-upload/smoke`
+   - `MyDrive/rubber-band-gun-ai-data/pi-upload/evaluation`
    - `MyDrive/rubber-band-gun-ai-data/processed`
    - `MyDrive/rubber-band-gun-ai-data/runs`
 

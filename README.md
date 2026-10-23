@@ -16,7 +16,7 @@ baseline 평가
        ├─ 통과: 기존 모델 + 보정값 유지
        ├─ YOLO만 실패: 표적 탐지 데이터 보강 및 YOLO 재학습
        └─ yaw만 실패: yaw capture 보강 및 CNN 재학습
-       ↓
+       ↓ immutable baseline run + review
 Drive / runs + model candidate PR
        ↓ 팀 리뷰와 GitHub Actions
 승격된 모델과 코드의 Raspberry Pi evaluation release
@@ -31,12 +31,14 @@ Drive / runs + model candidate PR
 | GitHub/Colab 연결 | 준비됨 | 비공개 저장소 다운로드, 의존성 설치, Drive mount, 런타임 기록 |
 | Pi → Drive → Colab | 검증됨 | 카메라 smoke bundle 생성·업로드·해시 검증 |
 | yaw 데이터 수집 | 코드 준비·실기 미검증 | 공통 전처리, 보정 설정, 발사 없는 yaw/pitch 수집, bundle 검증 |
-| 데이터 계약 | 준비됨 | capture manifest, CSV, 전처리 버전, 향후 shot result 형식 |
-| CI | 준비됨 | Ruff, CPU 테스트, 노트북 구조 검증 |
+| 데이터 계약 | 준비됨 | capture/run manifest, CSV, 전처리 버전, immutable shot evidence |
+| CI | 준비됨 | 단일 pre-device gate로 Ruff, CPU 테스트, 컴파일, 노트북·저장소 정책 검증 |
 | 학습 데이터셋 생성 | 준비됨 | 검증된 capture를 capture 단위로 분할하고 dataset manifest 생성 |
-| 기존 모델 baseline 평가 | 미구현 | actuator-free YOLO/CNN 평가 코드가 다음 단계 |
+| 기존 모델 baseline 평가 | 코드 준비·실데이터 미검증 | target recall, no-target false-positive rate, yaw MAE/RMSE/bias와 immutable run |
 | 재학습 | 미구현 | baseline 결과에 따라 YOLO 또는 yaw CNN만 구현 |
-| Pi 추론/실제 발사 평가 | 미구현 | 하드웨어와 안전 절차 완성 후 진행 |
+| Pi 화면 추론 | 코드 준비·실기 미검증 | GPIO를 import하지 않는 detection/yaw preview |
+| 동작 범위 정책 | 순수 로직·자동 테스트 준비 | 보정·안정화된 local keyboard yaw/pitch만 허용하고 model/remote 입력 거부 |
+| 실제 결과 기록 | 코드 준비·실기 미검증 | 보정 범위 안의 수동 yaw/pitch 조작, canonical preview, 부분 증거 보존과 hash verifier; 외부 event는 프로그램 밖에서 수행 |
 
 강의 자료의 모델과 노트북은 참고 자료이며 현재 프로젝트의 검증된 결과물이 아닙니다. 특히 강의 수집·학습·추론 코드의 카메라 crop 방식이 서로 달라 그대로 배포하지 않습니다.
 
@@ -50,9 +52,7 @@ cd rubber-band-gun-ai
 python3 -m venv .venv
 source .venv/bin/activate
 python -m pip install -e '.[dev]'
-pytest
-ruff check .
-python scripts/check-notebooks.py
+python scripts/verify-pre-device.py
 ```
 
 각 팀원은 짧은 branch에서 작업하고 `main`으로 pull request를 엽니다. `python` CI가 성공한 뒤 누구든 리뷰하고 merge할 수 있습니다. 개인 토큰, SSH 키, Pi 주소, 로컬 설정, 원본 데이터는 커밋하지 않습니다.
@@ -65,17 +65,24 @@ python scripts/check-notebooks.py
 
 환경 확인이 끝나고 실제 yaw capture가 Drive에 올라오면 [dataset builder notebook](notebooks/10_build_yaw_dataset.ipynb)에서 capture ID별 split을 지정해 `processed/<dataset-id>/`를 만듭니다.
 
+Dataset과 사람이 확인한 no-target capture가 준비되면 [baseline evaluation notebook](notebooks/20_evaluate_baseline.ipynb)에서 기존 YOLO/CNN을 actuator-free로 평가합니다. Validation 결과를 보기 전에 acceptance threshold를 기록하며, locked test는 후보와 기준을 고정하고 다른 팀원의 승인을 기록한 경우에만 실행합니다.
+
 ### 3. Pi 작업
 
 - 연결만 검사: [Pi → Drive → Colab smoke test](docs/data-flow-smoke-test.md)
 - Drive 최초 설정: [Pi direct Drive upload](docs/pi-drive-upload.md)
 - 카메라 preview와 yaw 수집: [Yaw data collection](docs/yaw-data-collection.md)
+- 무표적 평가 프레임과 화면 추론: [Pre-device readiness](docs/pre-device-readiness.md)
+- 수동 yaw/pitch 실제 결과 기록: [데이터 계약의 Shot-run bundle](docs/data-contract.md#shot-run-bundle)
 
 표적과 하드웨어가 준비되지 않았다면 preview-only까지만 실행합니다. `configs/pi.toml`에 실제 한계값과 조준 기준을 기록하고 `calibrated=true`로 바꾸기 전에는 motion mode가 거부됩니다.
+
+Shot-run evaluator는 A/D yaw, W/S pitch, R center만 허용하며 설정된 안정화 시간이 지나야 Space로 trial을 저장합니다. 모델 출력은 축을 움직이지 않고 외부 event를 수행하는 기능도 저장소 범위 밖입니다.
 
 ## 데이터와 학습 원칙
 
 - `pi-upload/raw/`: Pi만 쓰는 원본 capture ingress. 완료된 bundle은 수정하지 않습니다.
+- `pi-upload/evaluation/`: Pi가 쓰는 no-target 등 독립 평가 capture ingress입니다.
 - `processed/`: 검증된 capture를 특정 dataset version으로 조합한 결과입니다.
 - `runs/`: 학습 설정, 지표, 로그, checkpoint와 run manifest를 저장합니다.
 - `models/`: 팀이 승인한 최종 모델과 manifest만 Git LFS로 저장합니다.
@@ -102,9 +109,9 @@ tests/          하드웨어 없는 자동 테스트
 
 ## 다음 구현 순서
 
-1. 표적이 준비되면 actuator-free baseline 진단용 capture와 아직 열지 않을 locked-test capture를 분리해 만든다.
+1. 표적이 준비되면 actuator-free baseline 진단용 capture, no-target capture와 아직 열지 않을 locked-test capture를 분리해 만든다.
 2. Colab dataset builder로 검증된 capture를 versioned dataset으로 만든다.
-3. 기존 YOLO와 yaw CNN을 각각 평가한다.
+3. baseline notebook으로 기존 YOLO와 yaw CNN을 각각 평가하고 immutable run을 검증한다.
 4. 실패 원인에 따라 보정, yaw CNN 재학습, YOLO 재학습 중 하나만 선택한다.
 5. 승인된 모델 manifest와 recorded-frame 평가를 거쳐 Pi evaluation release를 만든다.
 

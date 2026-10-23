@@ -28,11 +28,13 @@ Google Drive / pi-upload/raw/<capture-id>
   └─ Colab dataset builder
        ├─ source capture 재검증
        ├─ capture 단위 split 확인
-       ├─ human-aligned frame만 복사
+       ├─ human-aligned correction frame만 복사
        └─ labels.csv + dataset_manifest.json
             ↓
 Google Drive / processed/<dataset-id>
-  └─ baseline / training / model promotion       [아직 미구현]
+  └─ actuator-free baseline + no-target bundle
+       └─ predictions + metrics + immutable run
+            └─ training / model promotion         [필요할 때만]
        ↓
 GitHub model candidate + Drive run artifacts     [아직 미구현]
   └─ manual evaluation deployment
@@ -45,8 +47,10 @@ Drive와 rclone 경로는 같은 위치를 다음처럼 표현합니다.
 Google Drive: rubber-band-gun-ai-data/
 ├── pi-upload/
 │   ├── raw/<capture-id>/       == Pi rclone project-drive:raw/<capture-id>/
-│   └── smoke/<capture-id>/     == Pi rclone project-drive:smoke/<capture-id>/
+│   ├── smoke/<capture-id>/     == Pi rclone project-drive:smoke/<capture-id>/
+│   └── evaluation/<capture-id> == Pi rclone project-drive:evaluation/<capture-id>/
 ├── processed/<dataset-id>/     == Colab workspace.processed/<dataset-id>/
+├── reference-models/           == unpromoted baseline inputs
 └── runs/<run-id>/              == Colab workspace.runs/<run-id>/
 ```
 
@@ -60,17 +64,18 @@ Google Drive: rubber-band-gun-ai-data/
 | Pi → Drive upload | Pi에서 bundle별 명령 실행 | 해시 검사, immutable upload, 원격 대조 | 어떤 완료 bundle을 올릴지 | 구현·smoke 검증됨 |
 | Colab 환경 확인 | 사용자가 Run all | GitHub `main` 다운로드, 의존성 설치, Drive mount, smoke 검증 | 계정 승인과 smoke ID | 구현·smoke 검증됨 |
 | Dataset 생성 | 사용자가 ID와 split 입력 후 Run all | capture 재검증, 이미지 복사, labels/manifest 생성, 결과 재검증 | dataset ID와 capture별 split | 구현·합성 데이터 검증됨 |
-| Baseline 평가 | 향후 notebook 실행 | 지표·실패 사례·run manifest 생성 예정 | threshold와 통과 여부 | 미구현 |
+| Baseline 평가 | notebook 또는 CLI | recall/FPR/yaw 오차, predictions, run manifest와 hash | 사전 threshold와 결과 판정 | 구현됨·실데이터 확인 필요 |
 | 재학습 | baseline 실패 후 향후 notebook 실행 | checkpoint·metrics·run manifest 생성 예정 | 재학습 필요성, 모델 종류 | 미구현 |
 | 모델 승격 | 향후 model candidate PR | manifest·hash·CPU 호환성 검사 예정 | 모델 승인과 locked-test 개봉 | 미구현 |
 | Pi evaluation 배포 | GitHub Actions 수동 실행 | CI 재실행, Tailscale 연결, SHA별 release 동기화 | 팀 확인과 실행 시점 | 코드 준비·비활성화 |
-| Pi 추론/물리 시험 | 향후 로컬 실행 | recorded-frame inference와 로그 기록 예정 | 장비 arm, 단발 실행, hit 판정 | 미구현 |
+| Pi 화면 추론 | Pi에서 preview 실행 | detection과 yaw overlay | 모델 경로와 관찰 결과 | 구현됨·실기 확인 필요 |
+| 물리 시험 증거 | Pi에서 로컬 실행 | 비구동 logger가 필수 사전 frame·선택 사후 frame·입력값·결과·hash 기록 | 별도 절차 승인, 외부 물리 행동, hit 판정 | 기록 코드 준비·실기 미검증 |
 
 `구현됨`은 코드 경로가 존재하고 자동 테스트가 있다는 뜻입니다. 카메라·서보·표적과 관련된 성능을 실제 장비에서 검증했다는 뜻은 아닙니다.
 
 ## 3. 현재 가능한 golden path
 
-현재 운영 가능한 자동화는 dataset 생성에서 끝납니다. 이후 baseline, training, model promotion과 Pi inference는 구현 전입니다.
+현재 운영 가능한 자동화는 immutable baseline run 생성과 재검증에서 끝납니다. 재학습, model promotion과 물리 inference는 baseline 결과와 하드웨어 안전 gate 이후입니다.
 
 | 순서 | 담당 역할 | 실행 | 성공 증거 | 다음 handoff |
 | --- | --- | --- | --- | --- |
@@ -80,6 +85,8 @@ Google Drive: rubber-band-gun-ai-data/
 | 4 | Colab operator | `00_environment_check.ipynb` Run all | `runs/data-flow-smoke/<smoke-id>.json`의 `status: passed` | 연결 준비 완료 기록 |
 | 5 | data steward | capture 목록과 split 제안 | Issue에 capture ID, 조건과 split 근거 | 다른 팀원 확인 |
 | 6 | Colab operator | `10_build_yaw_dataset.ipynb` Run all | dataset verifier의 `status: passed`, dataset ID와 manifest hash | 향후 baseline 작업 입력 |
+| 7 | Pi operator | target 없는 장면에서 `capture-no-target.py` 실행·업로드 | no-target verifier `status: passed` | Colab operator에게 ID 전달 |
+| 8 | Colab operator | threshold 확정 후 `20_evaluate_baseline.ipynb` Run all | baseline run verifier와 gate status | 팀에게 재학습 여부 판단 요청 |
 
 역할은 고정 직급이 아니라 작업 단위 책임입니다. 네 명이 순환해서 맡을 수 있지만, locked-test 개봉과 모델 승격은 제안자 외 다른 팀원이 확인합니다. GitHub/Drive 관리자, Pi operator, data steward, Colab/model operator의 구체적인 배정은 Issue에 남깁니다.
 
@@ -140,6 +147,18 @@ Motion mode는 `calibrated=true`, 실제 calibration ID, aiming reference, 유�
 
 이 단계에는 발사 명령이 없습니다. 자세한 조작과 calibration 절차는 [Yaw data collection](yaw-data-collection.md)을 따릅니다.
 
+### 5.3 Manual shot-run evaluation
+
+```bash
+python scripts/pi/log-shot-run.py \
+  --config configs/pi.toml \
+  --target-distance-m 2.0 \
+  --shots 10 \
+  --capture-post-evidence
+```
+
+Evaluator는 `calibrated=true`, 실제 calibration ID와 aiming reference, 서로 다른 yaw/pitch pin, 측정된 각도 범위를 요구합니다. Live canonical preview에서 A/D는 yaw, W/S는 pitch, R은 config center로 이동합니다. Servo 명령 뒤 `capture.settle_seconds`가 지나기 전에는 Space를 무시합니다. Space는 현재 frame과 commanded yaw/pitch를 하나의 attempt directory로 저장한 뒤 멈추며, 운영자가 외부 event를 독립적으로 완료하고 Enter로 확인한 다음 선택적 post-event frame과 결과를 기록합니다. 모델 출력에 따른 자동 이동과 event actuation은 이 경계 밖입니다. Esc는 완료 trial이 있을 때만 bundle을 publish합니다.
+
 ## 6. Pi → Drive 업로드 자동화
 
 ```bash
@@ -192,7 +211,7 @@ Builder는 각 capture를 정확히 한 split에만 허용하고 다음을 자�
 
 1. 각 raw capture를 복사 전후에 검증합니다.
 2. 전처리 schema가 다른 capture의 혼합을 거부합니다.
-3. `human-aligned` frame만 포함하고 `diagnostic` frame 수를 기록합니다.
+3. 사람이 정렬 기준을 표시한 `human-aligned` 보정 frame만 포함하고 `diagnostic` frame 수를 기록합니다.
 4. 복사된 이미지 hash를 source manifest와 비교합니다.
 5. 전역적으로 고유한 이미지 이름과 `labels.csv`를 만듭니다.
 6. source capture hash, calibration, split, Git commit, 파일 hash와 yaw 통계를 `dataset_manifest.json`에 기록합니다.
@@ -205,7 +224,7 @@ Builder는 각 capture를 정확히 한 split에만 허용하고 다음을 자�
 rubber-band-gun-ai-data/processed/<dataset-id>/
 ```
 
-현재 baseline evaluator가 없으므로, 첫 실제 dataset은 기존 모델 진단용 `validation` capture만으로 만들 수 있습니다. `locked_test_ids`는 후보 모델과 threshold를 고정하고 다른 팀원이 승인하기 전까지 비워둡니다.
+첫 실제 dataset은 기존 모델 진단용 `validation` capture부터 만들 수 있습니다. `locked_test_ids`는 후보 모델과 threshold를 고정하고 다른 팀원이 승인하기 전까지 비워둡니다. Baseline evaluator는 validation dataset, 완전한 target annotation과 별도 no-target bundle이 모두 있어야 전체 gate를 판정합니다.
 
 `locked-test`는 Drive 권한으로 숨겨진 데이터가 아니라 팀 절차상의 상태입니다. Drive Editor는 raw capture를 열 수 있으므로, 후보 commit·model hash·threshold와 승인자를 Issue에 먼저 기록하고 개봉 시점과 결과를 남겨야 합니다. 결과를 보고 후보나 threshold를 바꾸면 해당 결과는 더 이상 locked test가 아니며 새로운 독립 capture가 필요합니다.
 
@@ -225,7 +244,15 @@ python scripts/check-yaw-dataset.py \
   /path/to/processed/dataset-baseline-v1
 ```
 
-## 9. 모델 학습과 결과 반환의 예정 경계
+## 9. Baseline 평가 자동화
+
+`notebooks/20_evaluate_baseline.ipynb`는 기존 YOLO와 yaw CNN을 로드하고 validation 또는 승인된 locked-test split을 평가합니다. Positive frame은 dataset lineage를 그대로 사용하고, 모델 예측을 보지 않은 검토자가 모든 target box를 annotation해야 합니다. No-target frame은 `scripts/pi/capture-no-target.py`가 만든 별도 bundle에서 가져옵니다.
+
+모든 run에는 입력 dataset manifest, target annotation, 모델 두 개, no-target 이미지, Git commit, runtime, threshold와 결과 파일의 SHA-256이 남습니다. 동일한 run ID를 덮어쓰지 않습니다. Target 또는 no-target case가 없으면 해당 gate는 `incomplete`이며 전체 run도 통과하지 않습니다. Locked test는 별도 승인 플래그, 승인자와 Issue/PR 참조 없이는 CLI 단계에서 거부됩니다.
+
+Pi의 `scripts/pi/preview-inference.py`는 동일한 전처리와 모델 adapter로 화면 overlay만 표시합니다. 이 파일은 GPIO와 actuator 라이브러리를 import하지 않으며 CI가 그 경계를 검사합니다.
+
+## 10. 모델 학습과 결과 반환의 예정 경계
 
 Dataset 이후 단계는 아직 자동화되지 않았습니다. 구현할 때도 notebook 파일 자체를 Pi로 보내지 않습니다.
 
@@ -241,7 +268,7 @@ Pi evaluation release
 
 Drive에는 전체 run과 checkpoint를 보관하고, Git에는 승인된 모델과 manifest만 둡니다. Training notebook은 `train`과 `validation`만 읽고, locked test는 후보와 threshold가 고정된 뒤 별도 평가 단계에서 한 번 엽니다.
 
-## 10. Pi evaluation 배포 자동화
+## 11. Pi evaluation 배포 자동화
 
 `.github/workflows/deploy-eval.yml`은 push 자동 배포가 아니라 `workflow_dispatch`로 시작하는 수동 workflow입니다. 현재 `PI_DEPLOY_ENABLED=false`이므로 실행되지 않습니다.
 
@@ -268,7 +295,7 @@ Workflow는 service를 시작하거나 motor·발사 명령을 실행하지 않�
 - 배포 후 service를 자동 시작하지 않는 현재 경계를 팀이 이해한다.
 - release 보존과 disk 정리 책임자를 정했다.
 
-## 11. 실패 지점과 재시도
+## 12. 실패 지점과 재시도
 
 | 실패 위치 | 남는 상태 | 재시도 기준 |
 | --- | --- | --- |

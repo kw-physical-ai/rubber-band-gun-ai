@@ -10,11 +10,11 @@ Build one reproducible workflow for:
 2. training YOLO and the yaw-regression CNN in Google Colab,
 3. promoting versioned model artifacts,
 4. deploying inference code and selected artifacts back to the Pi over Tailscale,
-5. testing aiming while keeping firing under an explicit human command.
+5. recording supervised outcomes while the evaluated event remains external to the software.
 
-The permitted target is an inanimate course target in a controlled test area. People, animals, and uncontrolled environments are out of scope. The software must start in a disarmed state and must never fire on process startup, after reconnect, or only because a model detected a target.
+The permitted target is an inanimate course target in a controlled test area. People, animals, and uncontrolled environments are out of scope. Software may move only the calibrated yaw and pitch axes after deliberate local keyboard input. Model output, remote input, process startup, and reconnect cannot command movement.
 
-Arming and firing are separate actions. Firing accepts only a local, deliberate input; SSH, CI, deployment scripts, and model output cannot invoke it. One press produces at most one firing pulse, and holding a key cannot repeat shots. Camera loss, stale frames/input, model error, GPIO error, process restart, or lost control connection returns the system to disarmed. A software stop and a physical actuator-power cutoff must both be available during live tests.
+The evaluated event is outside the repository and is performed independently while the evaluator is paused. The repository contains no event-actuation interface or sequence. A software stop and a physical axis-power cutoff must both be available during live axis tests.
 
 ## 2. What the course material implements
 
@@ -27,10 +27,10 @@ Pi camera + manual WASD control
   -> rectangle mask at 224 x 224
   -> four-layer CNN yaw regression
   -> best_yaw_cnn.pth + yaw min/max
-  -> Pi inference: detect, predict yaw, move servo, human presses Space to fire
+  -> Pi evaluator: human moves calibrated yaw/pitch, Space stores pre-event evidence
 ```
 
-Relevant constants in the reference implementation include GPIO 18/13/12 for yaw/pitch/fire, a yaw center of 50 degrees, pitch 90 degrees, and a constrained yaw range of 32 to 68 degrees. These are reference values, not universal hardware truth; they must be calibrated on the actual assembly and stored in device configuration.
+The example configuration includes yaw and pitch pins and centers, but its zero-width bounds intentionally prevent motion. The actual assembly's two axes must be calibrated and stored in the ignored device configuration.
 
 The supplied YOLO notebook contains a plaintext example Roboflow API key and explicitly expects students to replace it. Do not use or copy that example value. Create this project's own Roboflow project/key and access it only through Colab Secrets or an environment variable.
 
@@ -77,7 +77,7 @@ Exit gate: secret scanning finds no live credentials in files to be committed.
 - Require pull requests and a successful `python` CI job by team convention wherever repository rules cannot enforce them. Do not make the course repository public merely to obtain enforcement.
 - Record hardware experiments and model evaluations as Issues that reference the code commit, hardware revision, model hash, dataset/run ID, result, and next decision.
 - Use one organization Project with `Backlog`, `Ready`, `In Progress`, `Hardware Blocked`, `Review`, and `Done` states.
-- Treat `main` as the integration branch and the source for evaluation releases. Deployment is manually dispatched at first; automatic deployment after merge is enabled only after version switching and rollback have been tested. Neither mode may arm or fire the mechanism.
+- Treat `main` as the integration branch and the source for evaluation releases. Deployment is manually dispatched at first; automatic deployment after merge is enabled only after version switching and rollback have been tested. Neither mode may move an axis or perform the evaluated event.
 
 ### Phase 2 - convert scripts into a testable package
 
@@ -118,13 +118,13 @@ Then:
 - Clone the repository using a deploy key or a fine-grained read-only credential, not a personal broad-scope token.
 - Add the runtime user to only the required hardware groups.
 - Run camera, individual-servo, limit, and emergency-stop checks before loading a model.
-- Disconnect actuator power for camera/model/aiming tests. Connect the fire servo only after dry-run and limit tests pass.
+- Keep axis power unavailable for camera/model-only tests. Enable yaw/pitch motion only for an attended, calibrated manual-axis test.
 - Reconcile collection/training/inference preprocessing before judging either supplied model.
 - Capture a diagnostic evaluation set rather than a training set first. Keep it out of later training so it remains an independent baseline check.
-- Run inference in log/overlay-only mode: record detections, confidence, predicted yaw, expected yaw, and latency without sending movement or fire commands.
-- If a systemd service is added, start inference disarmed and require a local arm action followed by a separate local single-shot action.
+- Run inference in log/overlay-only mode: record detections, confidence, predicted yaw, expected yaw, and latency without sending movement commands.
+- If a systemd service is added, keep it preview-only; manual axis movement remains an attended command-line operation.
 
-Exit gate: camera preview and dry-run aiming work; the fire servo remains disabled during unattended startup and reconnection tests.
+Exit gate: camera preview and dry-run aiming work; no unattended startup or reconnection path can move either axis.
 
 ### Phase 4 - make Colab reproducible
 
@@ -181,7 +181,7 @@ Candidate pull requests contain the notebook/code changes, a Git LFS pointer for
 - Promotion requires validation yaw MAE, locked-test yaw MAE, target recall, no-target false-positive rate, recorded-frame end-to-end alignment error, and all safety fault tests. Model selection uses validation data; only the final candidate is evaluated on the locked test set.
 - Deploy a tagged commit and matching model manifest through `scripts/deploy-eval.sh` using SSH/rsync.
 - Verify SHA-256 hashes on the Pi before activation.
-- Install releases under a configured release root in `releases/<tag>`, switch a `current` symlink only after verification, and retain the previous known-good release. Rollback stops the service, repoints `current`, verifies the manifest/hash, and restarts disarmed.
+- Install releases under a configured release root in `releases/<tag>`, switch a `current` symlink only after verification, and retain the previous known-good release. Rollback stops the service, repoints `current`, verifies the manifest/hash, and restarts preview-only.
 
 Use a push-based GitHub Actions deployment with GitHub as the control point:
 
@@ -204,7 +204,7 @@ Automation credentials are service credentials, separate from the shared class p
 - The deploy user can write only versioned release directories and invoke one root-owned activation script through a narrow sudo rule.
 - Do not install a persistent GitHub self-hosted runner on the Pi.
 
-While hardware is incomplete, the automatic target is an evaluation release only: dependencies, code, configuration, and accepted reference/candidate models are synchronized, but the launched command is log/overlay-only and has no actuator access. After hardware and safety gates pass, a separate manually triggered workflow may activate movement-capable mode. No workflow can arm or fire.
+While hardware is incomplete, the automatic target is an evaluation release only: dependencies, code, configuration, and accepted reference/candidate models are synchronized, but the launched command is log/overlay-only and has no actuator access. After hardware and safety gates pass, an attended local process may enable bounded yaw/pitch movement. No workflow performs the evaluated event.
 
 Exit gate: the deployed code commit, model hash, configuration, and training run can be traced to one release/tag.
 
@@ -225,9 +225,9 @@ Hardware-in-the-loop checks stay on the Pi and are manually initiated with actua
 
 1. Keep unaccepted reference model binaries and course material outside Git; use the organization repository as the source of shared code.
 2. Sign in to the configured Pi runtime account and record OS, architecture, camera, GPIO, servo, power, and physical-cutoff details.
-3. Write the preprocessing contract and add a log/overlay-only inference mode with all actuators disabled.
-4. Copy the reference models and minimum evaluation runtime directly to the Pi without treating them as promoted repository artifacts, then capture a small independent diagnostic set.
-5. Evaluate the supplied YOLO and yaw CNN separately, then follow the baseline decision tree above.
+3. Use the shared preprocessing contract and GPIO-free overlay preview to inspect the actual camera field of view.
+4. Copy the reference models directly to the Pi without treating them as promoted repository artifacts, then capture positive and no-target diagnostic sets.
+5. Use the versioned dataset and immutable baseline-run tooling to evaluate the supplied YOLO and yaw CNN separately, then follow the baseline decision tree above.
 6. Only if retraining is required, create the project-owned Roboflow resource and refactor the necessary collection/training path; continue using the established shared Drive layout.
 7. Before live movement, write the full safety state machine and add fake-hardware/fault-injection tests.
 8. Define calibration-derived acceptance thresholds, promote the accepted model/configuration, and deploy a versioned release.
@@ -241,15 +241,15 @@ Hardware-in-the-loop checks stay on the Pi and are manually initiated with actua
 - [ ] A fresh Colab runtime trains from a versioned dataset manifest.
 - [ ] Training and Pi inference share preprocessing code or pass the same golden fixtures within the documented numeric tolerance.
 - [ ] Every promoted model has a hash, metrics, yaw range, input schema, and source commit.
-- [ ] Pi configuration enforces servo bounds, cooldown, disarmed startup, and manual fire.
-- [ ] Fault-injection tests prove that one local press causes at most one pulse and that every specified fault returns to disarmed without a pulse.
+- [ ] Pi configuration enforces calibrated yaw/pitch bounds, step sizes, center positions, and settling delay.
+- [ ] Policy tests prove model, remote, uncalibrated, unsettled, and extra-axis commands are rejected.
 - [ ] Recorded-frame inference passes before live servo movement.
-- [ ] Live aiming passes before the fire servo is connected/enabled.
+- [ ] Live manual aiming passes before any supervised outcome run begins.
 - [ ] Deployment has a tested rollback path.
 
 ## 7. Current blockers and next decision
 
-The immediate decision is whether the supplied models already work on the current assembly. Pi access is available interactively through Tailscale and the shared class password, so first inventory the target, reconcile preprocessing, add actuator-free inference, and collect a small diagnostic evaluation set. In parallel, the repository, Colab candidate-PR contract, and evaluation-only GitHub Actions/Tailscale deployment can be built without waiting for final hardware. Full training-data collection and movement-capable activation remain conditional on the baseline result and hardware safety gates.
+The remaining blocker is physical evidence from the actual assembly. The repository now provides the preprocessing contract, positive and no-target capture contracts, actuator-free baseline evaluator, immutable run and model-manifest validation, GPIO-free Pi preview, and one-command CI gate. When the hardware is available, inventory it, calibrate it, capture independent diagnostic sessions, freeze acceptance thresholds, and evaluate the supplied models. Retraining and movement-capable activation remain conditional on that result and the hardware safety gates.
 
 References:
 

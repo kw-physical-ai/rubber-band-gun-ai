@@ -21,9 +21,5 @@ jobs:
           cache: pip
       - name: Install development dependencies
         run: python -m pip install -e '.[dev]'
-      - name: Ruff
-        run: ruff check .
-      - name: Pytest
-        run: pytest
-      - name: Validate notebooks
-        run: python scripts/check-notebooks.py
+      - name: Hardware-independent gate
+        run: python scripts/verify-pre-device.py

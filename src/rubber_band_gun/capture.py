@@ -17,12 +17,13 @@ import numpy as np
 
 from .preprocessing import PreprocessingSpec, orient_and_crop_rgb
 
-CAPTURE_SCHEMA = "rbg-yaw-capture/v1"
+CAPTURE_SCHEMA = "rbg-yaw-capture/v2"
 CAPTURE_ID_PATTERN = re.compile(r"capture-\d{8}T\d{6}Z")
 CSV_COLUMNS = (
     "filename",
     "captured_at_utc",
     "yaw_degrees",
+    "aligned_yaw_degrees",
     "yaw_offset",
     "pitch_degrees",
     "label_status",
@@ -110,6 +111,7 @@ class YawCaptureSession:
         frame_rgb: np.ndarray,
         *,
         yaw_degrees: float,
+        aligned_yaw_degrees: float,
         pitch_degrees: float,
         captured_at: datetime | None = None,
         label_status: str = "human-aligned",
@@ -119,6 +121,9 @@ class YawCaptureSession:
         if label_status not in {"human-aligned", "diagnostic"}:
             raise ValueError(f"unsupported label status: {label_status}")
         yaw_degrees = _finite_servo_angle("yaw_degrees", yaw_degrees)
+        aligned_yaw_degrees = _finite_servo_angle(
+            "aligned_yaw_degrees", aligned_yaw_degrees
+        )
         pitch_degrees = _finite_servo_angle("pitch_degrees", pitch_degrees)
 
         import cv2
@@ -142,7 +147,8 @@ class YawCaptureSession:
                 "filename": filename,
                 "captured_at_utc": _iso_utc(captured_at),
                 "yaw_degrees": f"{yaw_degrees:.3f}",
-                "yaw_offset": f"{yaw_degrees - self.calibration.yaw_center_degrees:.3f}",
+                "aligned_yaw_degrees": f"{aligned_yaw_degrees:.3f}",
+                "yaw_offset": f"{aligned_yaw_degrees - yaw_degrees:.3f}",
                 "pitch_degrees": f"{pitch_degrees:.3f}",
                 "label_status": label_status,
             }
@@ -179,7 +185,7 @@ class YawCaptureSession:
             "frame_count": len(self._rows),
             "stored_frame_height": self._stored_frame_shape[0],
             "stored_frame_width": self._stored_frame_shape[1],
-            "label_contract": "yaw_offset = yaw_degrees - yaw_center_degrees",
+            "label_contract": "yaw_offset = aligned_yaw_degrees - yaw_degrees",
             "calibration": {
                 "calibration_id": self.calibration.calibration_id,
                 "yaw_center_degrees": self.calibration.yaw_center_degrees,
@@ -218,7 +224,7 @@ def verify_yaw_capture_bundle(bundle: Path) -> dict[str, Any]:
     calibration = manifest.get("calibration", {})
     if not isinstance(calibration, dict) or "yaw_center_degrees" not in calibration:
         raise ValueError("manifest calibration is incomplete")
-    center = _finite_servo_angle("yaw_center_degrees", calibration["yaw_center_degrees"])
+    _finite_servo_angle("yaw_center_degrees", calibration["yaw_center_degrees"])
     if not str(calibration.get("calibration_id", "")).strip():
         raise ValueError("manifest calibration_id is required")
     if not str(calibration.get("aiming_reference", "")).strip():
@@ -288,10 +294,13 @@ def verify_yaw_capture_bundle(bundle: Path) -> dict[str, Any]:
     for row in rows:
         _parse_aware_timestamp("captured_at_utc", row["captured_at_utc"])
         yaw = _finite_servo_angle("yaw_degrees", row["yaw_degrees"])
+        aligned_yaw = _finite_servo_angle(
+            "aligned_yaw_degrees", row["aligned_yaw_degrees"]
+        )
         offset = float(row["yaw_offset"])
         if not math.isfinite(offset):
             raise ValueError("yaw_offset must be finite")
-        if abs(offset - (yaw - center)) > 0.0015:
+        if abs(offset - (aligned_yaw - yaw)) > 0.0015:
             raise ValueError(f"yaw offset contract failed: {row['filename']}")
         _finite_servo_angle("pitch_degrees", row["pitch_degrees"])
         if row["label_status"] not in {"human-aligned", "diagnostic"}:

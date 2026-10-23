@@ -17,8 +17,10 @@ Drive의 공용 구조는 다음과 같습니다.
 rubber-band-gun-ai-data/
 ├── pi-upload/
 │   ├── raw/<capture-id>/
-│   └── smoke/<capture-id>/
+│   ├── smoke/<capture-id>/
+│   └── evaluation/<no-target-id>/
 ├── processed/<dataset-id>/
+├── reference-models/
 └── runs/<run-id>/
 ```
 
@@ -37,9 +39,7 @@ Pi는 `pi-upload/`만 작성하고, Colab은 이를 읽어 `processed/`와 `runs
 5. `python` CI가 성공한 뒤 다른 팀원이 검토하고 merge한다.
 
 ```bash
-pytest
-ruff check .
-python scripts/check-notebooks.py
+python scripts/verify-pre-device.py
 ```
 
 하드웨어 실험 Issue에는 최소한 다음을 기록합니다.
@@ -62,7 +62,7 @@ Smoke bundle은 Pi → Drive → Colab 연결만 증명합니다. 학습이나 �
 
 ### yaw 데이터
 
-Yaw capture는 사람이 고정된 조준 기준에 표적을 맞춘 뒤 카메라 프레임과 yaw/pitch 명령값을 함께 저장합니다. 센서가 측정한 물리 각도가 아니라 서보에 보낸 명령값이라는 점에 주의합니다.
+Yaw capture는 사람이 고정된 조준 기준에 표적을 맞춘 yaw 각도를 먼저 표시한 뒤, 그 각도에서 벗어난 카메라 프레임과 복귀에 필요한 yaw 보정값을 저장합니다. 카메라가 총신과 함께 회전하므로 이미 정렬된 프레임만 저장하지 않습니다. 각도는 센서가 측정한 물리 각도가 아니라 서보에 보낸 명령값입니다.
 
 각 session은 `capture-YYYYMMDDTHHMMSSZ` 디렉터리 하나로 완료되며 이미지, `data_angles.csv`, `manifest.json`을 포함합니다. Pi와 Colab 양쪽에서 `scripts/check-yaw-capture.py`가 통과해야 분석 후보가 됩니다. 자세한 조작 방법은 [yaw data collection](yaw-data-collection.md), 필드 정의는 [data contract](data-contract.md)를 따릅니다.
 
@@ -88,12 +88,14 @@ Yaw capture는 사람이 고정된 조준 기준에 표적을 맞춘 뒤 카메�
 ### 4.2 기존 모델을 분리 평가
 
 1. YOLO: 사람이 검토한 독립 annotation을 정답으로 사용해 target recall, no-target false-positive rate, 잘못된 박스 사례를 평가합니다. 기존 YOLO가 만든 pseudo-label을 같은 모델의 평가 정답으로 사용하지 않습니다.
-2. Yaw CNN: 표적 검출 결과가 정상인 프레임에서 yaw MAE와 위치별 bias를 평가합니다.
+2. Yaw CNN: 표적 검출 결과가 정상인 프레임에서 yaw MAE, RMSE와 bias를 평가합니다.
 3. Recorded-frame pipeline: 수집 때와 같은 전처리로 `detect → mask → yaw prediction` 전체 결과를 기록합니다.
+
+`notebooks/20_evaluate_baseline.ipynb`와 `scripts/evaluate-baseline.py`가 이 평가 경로를 구현합니다. Positive frame은 immutable yaw dataset에서, no-target frame은 별도 `rbg-no-target-capture/v1` bundle에서 가져옵니다. 모델 예측을 보지 않은 사람이 모든 positive frame의 target box를 독립적으로 annotation해야 하며, recall은 고정된 IoU 기준을 충족한 box만 셉니다. 결과는 모델·데이터·annotation·threshold·runtime·prediction을 해시로 묶은 immutable baseline run입니다. 필요한 case나 annotation이 비어 있으면 gate는 `incomplete`가 됩니다.
 
 평가 threshold는 실제 servo resolution, 목표 거리에서 허용할 수 있는 오차, 표적 크기를 바탕으로 validation 결과를 보기 전에 정합니다. 기존 강의 checkpoint의 학습 지표만으로 통과 처리하지 않습니다. Locked-test label을 만드는 사람은 가능하면 후보 모델의 예측을 보지 않고 annotation이나 정렬값을 확정합니다.
 
-현재 하드웨어가 완성되지 않아 숫자 threshold는 아직 정해지지 않았습니다. Calibration이 끝나면 별도 평가 Issue에 metric별 통과값과 `invalid` 조건을 먼저 기록하고, 후보 commit·model hash·threshold가 고정되었다는 검토자의 확인 후에만 locked test를 실행합니다.
+현재 하드웨어가 완성되지 않아 숫자 threshold는 아직 정해지지 않았습니다. Calibration이 끝나면 별도 평가 Issue에 metric별 통과값과 `invalid` 조건을 먼저 기록합니다. 평가 CLI는 locked test에 명시 opt-in, 승인자와 Issue/PR 참조가 없으면 실행을 거부합니다.
 
 ### 4.3 결과별 처리
 
@@ -115,9 +117,9 @@ Yaw capture는 사람이 고정된 조준 기준에 표적을 맞춘 뒤 카메�
 - 생성에 사용한 Git commit과 패키지 버전
 - 파일 수, yaw 분포와 누락/거부 통계
 
-`notebooks/10_build_yaw_dataset.ipynb`와 `scripts/build-yaw-dataset.py`가 이 계약을 구현합니다. Builder는 source bundle을 다시 검증하고 `human-aligned` 프레임만 복사하며, 한 capture가 여러 split에 들어가거나 전처리 설정이 섞이면 중단합니다. 결과는 `labels.csv`와 `dataset_manifest.json`을 포함한 immutable directory로 게시됩니다.
+`notebooks/10_build_yaw_dataset.ipynb`와 `scripts/build-yaw-dataset.py`가 이 계약을 구현합니다. Builder는 source bundle을 다시 검증하고 사람이 정렬 기준을 표시한 `human-aligned` 보정 프레임만 복사하며, 한 capture가 여러 split에 들어가거나 전처리 설정이 섞이면 중단합니다. 결과는 `labels.csv`와 `dataset_manifest.json`을 포함한 immutable directory로 게시됩니다.
 
-따라서 현재 자동화 흐름은 `Pi capture → Drive upload → Colab bundle 검증 → versioned dataset`까지 이어집니다. 각 단계의 trigger, 자동 검사, 수동 gate와 복구 방법은 [자동화 흐름](automation-flow.md)에 정리되어 있습니다. 기존 모델 baseline 평가와 학습 run 생성부터는 아직 문서 계약만 있고 실행 코드는 없습니다.
+따라서 현재 자동화 흐름은 `Pi capture → Drive upload → Colab bundle 검증 → versioned dataset → recorded-frame baseline run`까지 이어집니다. 각 단계의 trigger, 자동 검사, 수동 gate와 복구 방법은 [자동화 흐름](automation-flow.md)에 정리되어 있습니다. 재학습은 baseline이 필요성을 증명한 모델에 대해서만 추가합니다.
 
 ## 6. Colab 학습 run
 
@@ -170,7 +172,7 @@ Yaw 라벨 정확도와 실제 명중 여부는 다릅니다. 하드웨어와 �
 - `hit/miss/invalid`는 모델 예측이 아니라 표적의 사후 증거로 판정합니다.
 - locked shot 결과를 보고 모델을 조정했다면 새 모델과 새 locked run으로 다시 평가합니다.
 
-현재 저장소는 `shot_results.csv`의 행 형식만 제공하며 발사를 구동하는 코드는 포함하지 않습니다. 실제 시험 전에는 model hash, calibration ID, preprocessing schema, target coordinate system과 증거 파일 hash를 묶는 shot-run manifest를 추가해야 합니다.
+현재 저장소는 보정된 yaw/pitch만 사람이 키보드로 조작하는 shot-run evaluator와 verifier를 제공합니다. 모델 기반 자동 조준과 외부 event actuation은 허용하지 않습니다. `rbg-shot-run/v1` manifest는 model/calibration reference hash, preprocessing schema, target coordinate system과 증거 파일 hash를 묶습니다. 이 기록 도구는 물리 안전 절차를 대신하거나 장비 사용을 승인하지 않습니다.
 
 ## 9. 현재 작업 경계
 
@@ -181,11 +183,15 @@ Yaw 라벨 정확도와 실제 명중 여부는 다릅니다. 하드웨어와 �
 - Pi → Drive → Colab smoke test
 - preview-only 카메라 확인
 - 하드웨어 보정 후 발사 없는 yaw capture 생성과 검증
+- no-target 평가 capture 생성·검증과 업로드
+- versioned dataset과 actuator-free baseline run 생성
+- GPIO를 불러오지 않는 Pi detection/yaw 화면 preview
+- 보정 범위와 안정화 지연을 강제하는 local-only yaw/pitch shot-run evaluator
 
 다음으로 구현할 작업:
 
-1. actuator-free 기존 모델 evaluator와 Colab baseline notebook
-2. baseline 결과가 요구할 경우에만 yaw CNN 또는 YOLO training notebook
-3. model manifest validator와 recorded-frame Pi evaluator
+1. 실제 장비의 calibration, positive/no-target 진단 capture와 acceptance threshold 확정
+2. 기존 모델 baseline 실행과 결과 검토
+3. baseline 결과가 요구할 경우에만 yaw CNN 또는 YOLO training notebook
 
 실제 발사와 movement-capable inference는 위 작업 및 하드웨어 안전 검증 이후의 별도 단계입니다.

@@ -54,6 +54,13 @@ def _validate_rgb_frame(frame: np.ndarray) -> None:
         raise ValueError("frame dimensions must be positive")
 
 
+def picamera2_rgb888_to_rgb(frame: np.ndarray) -> np.ndarray:
+    """Convert a Picamera2 RGB888 array, whose memory order is BGR, to RGB."""
+
+    _validate_rgb_frame(frame)
+    return np.ascontiguousarray(frame[..., ::-1])
+
+
 def orient_and_crop_rgb(frame: np.ndarray, spec: PreprocessingSpec) -> np.ndarray:
     """Apply the canonical live-camera geometry and return contiguous RGB pixels."""
 

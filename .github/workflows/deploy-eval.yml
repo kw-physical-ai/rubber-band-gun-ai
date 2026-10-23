@@ -29,9 +29,7 @@ jobs:
       - name: Verify release
         run: |
           python -m pip install -e '.[dev]'
-          ruff check .
-          pytest
-          python scripts/check-notebooks.py
+          python scripts/verify-pre-device.py
           git lfs fsck
       - name: Connect runner to Tailnet
         uses: tailscale/github-action@306e68a486fd2350f2bfc3b19fcd143891a4a2d8 # v4

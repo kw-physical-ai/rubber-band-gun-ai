@@ -2,6 +2,7 @@
 # Motion-capable collection refuses to start until the actual assembly is calibrated.
 calibrated = false
 calibration_id = "replace-after-calibration"
+# Example after verification: "target center at canonical preview crosshair intersection"
 aiming_reference = "replace-with-the-fixed-visual-alignment-reference"
 
 [camera]
@@ -19,6 +20,7 @@ model_width = 224
 model_height = 224
 
 [servo.yaw]
+# The evaluator accepts exactly these yaw and pitch sections; no event actuator is configured.
 pin = 18
 center_degrees = 50.0
 # Replace these two values with measured mechanical limits before setting calibrated=true.

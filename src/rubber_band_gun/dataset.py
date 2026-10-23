@@ -30,6 +30,7 @@ DATASET_CSV_COLUMNS = (
     "captured_at_utc",
     "split",
     "yaw_degrees",
+    "aligned_yaw_degrees",
     "yaw_offset",
     "pitch_degrees",
     "label_status",
@@ -176,6 +177,7 @@ def build_yaw_dataset(
                         "captured_at_utc": row["captured_at_utc"],
                         "split": split,
                         "yaw_degrees": row["yaw_degrees"],
+                        "aligned_yaw_degrees": row["aligned_yaw_degrees"],
                         "yaw_offset": row["yaw_offset"],
                         "pitch_degrees": row["pitch_degrees"],
                         "label_status": row["label_status"],
@@ -318,7 +320,6 @@ def verify_yaw_dataset(dataset: Path) -> dict[str, Any]:
     if not isinstance(source_entries, list) or not source_entries:
         raise ValueError("dataset has no source captures")
     capture_to_split: dict[str, str] = {}
-    capture_centers: dict[str, float] = {}
     capture_calibrations: dict[str, str] = {}
     for entry in source_entries:
         if not isinstance(entry, dict) or entry.get("split") not in SPLIT_NAMES:
@@ -346,7 +347,6 @@ def verify_yaw_dataset(dataset: Path) -> dict[str, Any]:
         if not str(entry.get("aiming_reference", "")).strip():
             raise ValueError(f"missing aiming reference: {capture_id}")
         capture_to_split[capture_id] = entry["split"]
-        capture_centers[capture_id] = center
         capture_calibrations[capture_id] = str(entry["calibration_id"])
 
     labels_path = dataset / "labels.csv"
@@ -382,13 +382,18 @@ def verify_yaw_dataset(dataset: Path) -> dict[str, Any]:
         if timestamp.tzinfo is None or timestamp.utcoffset() is None:
             raise ValueError("dataset timestamp must include a timezone")
         yaw = float(row["yaw_degrees"])
+        aligned_yaw = float(row["aligned_yaw_degrees"])
         offset = float(row["yaw_offset"])
         pitch = float(row["pitch_degrees"])
-        if not all(math.isfinite(value) for value in (yaw, offset, pitch)):
+        if not all(math.isfinite(value) for value in (yaw, aligned_yaw, offset, pitch)):
             raise ValueError("dataset contains a non-finite angle")
-        if not 0.0 <= yaw <= 180.0 or not 0.0 <= pitch <= 180.0:
+        if (
+            not 0.0 <= yaw <= 180.0
+            or not 0.0 <= aligned_yaw <= 180.0
+            or not 0.0 <= pitch <= 180.0
+        ):
             raise ValueError("dataset servo angle is outside 0..180 degrees")
-        if abs(offset - (yaw - capture_centers[capture_id])) > 0.0015:
+        if abs(offset - (aligned_yaw - yaw)) > 0.0015:
             raise ValueError(f"yaw offset contract failed: {relative_name}")
         if row["calibration_id"] != capture_calibrations[capture_id]:
             raise ValueError(f"calibration ID mismatch: {capture_id}")

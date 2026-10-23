@@ -32,6 +32,10 @@ class ProjectWorkspace:
         return self.pi_upload / "smoke"
 
     @property
+    def evaluation(self) -> Path:
+        return self.pi_upload / "evaluation"
+
+    @property
     def runs(self) -> Path:
         return self.root / "runs"
 

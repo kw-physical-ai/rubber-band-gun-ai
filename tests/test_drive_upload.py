@@ -8,13 +8,18 @@ REPOSITORY_ROOT = Path(__file__).resolve().parents[1]
 UPLOAD_SCRIPT = REPOSITORY_ROOT / "scripts" / "pi" / "upload-drive-bundle.sh"
 
 
-def _make_bundle(root: Path, capture_id: str = "smoke-20260922T123456Z") -> Path:
+def _make_bundle(
+    root: Path,
+    capture_id: str = "smoke-20260922T123456Z",
+    *,
+    identity_key: str = "capture_id",
+) -> Path:
     bundle = root / capture_id
     bundle.mkdir()
     payload = b"camera-frame-placeholder"
     (bundle / "frame.jpg").write_bytes(payload)
     manifest = {
-        "capture_id": capture_id,
+        identity_key: capture_id,
         "files": [
             {
                 "path": "frame.jpg",
@@ -118,5 +123,44 @@ def test_upload_rejects_destination_outside_ingress(tmp_path: Path) -> None:
     )
 
     assert result.returncode != 0
-    assert "destination must be project-drive:raw or project-drive:smoke" in result.stderr
+    assert (
+        "destination must be project-drive:raw, project-drive:smoke, or "
+        "project-drive:evaluation"
+    ) in result.stderr
     assert not log_path.exists()
+
+
+def test_upload_accepts_evaluation_ingress(tmp_path: Path) -> None:
+    bundle = _make_bundle(tmp_path)
+    log_path, environment = _fake_rclone(tmp_path)
+
+    result = subprocess.run(
+        ["bash", str(UPLOAD_SCRIPT), str(bundle), "project-drive:evaluation"],
+        check=False,
+        capture_output=True,
+        text=True,
+        env=environment,
+    )
+
+    assert result.returncode == 0, result.stderr
+    assert "project-drive:evaluation" in log_path.read_text(encoding="utf-8")
+
+
+def test_upload_accepts_shot_run_identity(tmp_path: Path) -> None:
+    bundle = _make_bundle(
+        tmp_path,
+        "shot-run-20260927T010203Z-test",
+        identity_key="run_id",
+    )
+    log_path, environment = _fake_rclone(tmp_path)
+
+    result = subprocess.run(
+        ["bash", str(UPLOAD_SCRIPT), str(bundle), "project-drive:evaluation"],
+        check=False,
+        capture_output=True,
+        text=True,
+        env=environment,
+    )
+
+    assert result.returncode == 0, result.stderr
+    assert f"project-drive:evaluation/{bundle.name}" in log_path.read_text(encoding="utf-8")

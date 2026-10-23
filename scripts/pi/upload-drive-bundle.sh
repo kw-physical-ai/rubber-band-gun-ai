@@ -18,8 +18,10 @@ fi
 
 bundle_dir="$(cd "$1" && pwd -P)"
 remote_parent="${2%/}"
-if [[ "$remote_parent" != "project-drive:raw" && "$remote_parent" != "project-drive:smoke" ]]; then
-  echo "destination must be project-drive:raw or project-drive:smoke" >&2
+if [[ "$remote_parent" != "project-drive:raw" \
+  && "$remote_parent" != "project-drive:smoke" \
+  && "$remote_parent" != "project-drive:evaluation" ]]; then
+  echo "destination must be project-drive:raw, project-drive:smoke, or project-drive:evaluation" >&2
   exit 1
 fi
 manifest_path="$bundle_dir/manifest.json"
@@ -42,11 +44,16 @@ manifest_path = Path(sys.argv[2])
 if manifest_path.is_symlink() or not manifest_path.is_file():
     raise SystemExit("manifest must be an ordinary file")
 manifest = json.loads(manifest_path.read_text(encoding="utf-8"))
-capture_id = manifest.get("capture_id")
-if not isinstance(capture_id, str) or not re.fullmatch(r"[A-Za-z0-9][A-Za-z0-9._-]{0,127}", capture_id):
-    raise SystemExit(f"invalid capture ID: {capture_id}")
-if bundle.name != capture_id:
-    raise SystemExit(f"bundle directory and capture ID differ: {bundle.name} != {capture_id}")
+identities = [manifest[key] for key in ("capture_id", "run_id") if key in manifest]
+if len(identities) != 1:
+    raise SystemExit("manifest must contain exactly one capture_id or run_id")
+bundle_id = identities[0]
+if not isinstance(bundle_id, str) or not re.fullmatch(
+    r"[A-Za-z0-9][A-Za-z0-9._-]{0,127}", bundle_id
+):
+    raise SystemExit(f"invalid bundle ID: {bundle_id}")
+if bundle.name != bundle_id:
+    raise SystemExit(f"bundle directory and manifest ID differ: {bundle.name} != {bundle_id}")
 
 entries = manifest.get("files")
 if not isinstance(entries, list) or not entries:
@@ -84,24 +91,24 @@ actual = {
 }
 if actual != expected:
     raise SystemExit("bundle files do not exactly match the manifest")
-print(capture_id)
+print(bundle_id)
 PY
 }
 
 # A completed capture is immutable. Removing write bits blocks accidental background writers;
 # users who share this Linux account remain inside the trust boundary and can override the mode.
-capture_id="$(verify_bundle)"
+bundle_id="$(verify_bundle)"
 chmod -R a-w "$bundle_dir"
 manifest_snapshot_dir="$(mktemp -d)"
 trap 'rm -f "$manifest_snapshot_dir/manifest.json"; rmdir "$manifest_snapshot_dir"' EXIT
 manifest_snapshot="$manifest_snapshot_dir/manifest.json"
 cp "$manifest_path" "$manifest_snapshot"
-if [[ "$(verify_bundle "$manifest_snapshot")" != "$capture_id" ]]; then
+if [[ "$(verify_bundle "$manifest_snapshot")" != "$bundle_id" ]]; then
   echo "bundle identity changed while making the manifest snapshot" >&2
   exit 1
 fi
 
-remote_dir="$remote_parent/$capture_id"
+remote_dir="$remote_parent/$bundle_id"
 echo "Uploading verified bundle: $bundle_dir -> $remote_dir"
 
 # Upload the manifest last so its presence means every payload file passed a remote check.
@@ -115,7 +122,7 @@ rclone check "$bundle_dir" "$remote_dir" --exclude '/manifest.json'
 
 # Recheck after the payload transfer, then compare the stable payload once more before
 # publishing the completion marker.
-if [[ "$(verify_bundle "$manifest_snapshot")" != "$capture_id" ]]; then
+if [[ "$(verify_bundle "$manifest_snapshot")" != "$bundle_id" ]]; then
   echo "bundle identity changed during upload" >&2
   exit 1
 fi

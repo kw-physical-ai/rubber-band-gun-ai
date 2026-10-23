@@ -35,6 +35,7 @@ def _capture(
         session.add_frame(
             np.full((8, 12, 3), index, dtype=np.uint8),
             yaw_degrees=50 + index,
+            aligned_yaw_degrees=50,
             pitch_degrees=90,
             captured_at=datetime(2026, 9, 23, 0, 0, index, tzinfo=UTC),
             label_status=label,

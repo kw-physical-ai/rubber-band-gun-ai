@@ -1,6 +1,8 @@
-"""Data contract for later supervised shot-outcome evaluation.
+"""Legacy standalone shot-result rows retained for compatibility.
 
-This module records results only. It contains no actuator or firing command.
+New evaluation evidence must use :mod:`rubber_band_gun.shot_run`, whose versioned
+bundle binds images, preprocessing, references, timestamps, and hashes. This
+module records rows only and contains no actuator or firing command.
 """
 
 from __future__ import annotations
